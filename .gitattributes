@@ -1,0 +1,2 @@
+cleaning-scripts/hose_shift_lookup.json filter=lfs diff=lfs merge=lfs -text
+cleaning-scripts/smiles_shift_lookup.json filter=lfs diff=lfs merge=lfs -text
