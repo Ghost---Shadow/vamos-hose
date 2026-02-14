@@ -1,0 +1,1480 @@
+{
+  "@HCOC(HHC,H,HHC/@CCC,=&C/=&C,H=C,HHH,HHH),@HCO,\\H|C/": {
+    "n": "C",
+    "s": "C1C(C=C)(C)O(C1)(C=C)(C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 67.0,
+      "max": 67.0,
+      "cnt": 1,
+      "avg": 67.0
+    }
+  },
+  "H=CC(HC,HHC/H=C,@OCC/": {
+    "n": "C",
+    "s": "C(=C)C(C=C)C(C)(C)O",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 131.4,
+      "max": 131.4,
+      "cnt": 1,
+      "avg": 131.4
+    }
+  },
+  "CC(CCO,H=C/H=C,HHH,H,HC/CC,H=C)H=C,HHH,HC/HC,=OO/": {
+    "n": "C",
+    "s": "C(C=CC)C(C)(O)(=CC=C)C=C(C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 42.9,
+      "max": 42.9,
+      "cnt": 1,
+      "avg": 42.9
+    }
+  },
+  "=CCC(HC,@HCO,HHH/H=C,HHC,C/\\H|C,H=C,@CHO)": {
+    "n": "C",
+    "s": "C(=C)(C)C(C=CC)(OC(O)C)CC=C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 142.3,
+      "max": 142.3,
+      "cnt": 1,
+      "avg": 142.3
+    }
+  },
+  "=CCC(HC,HHH,HHH/HHC/": {
+    "n": "C",
+    "s": "C(=C)(C)CCC",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 133.7,
+      "max": 133.8,
+      "cnt": 4,
+      "avg": 133.9
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 130.1,
+      "max": 131.704,
+      "cnt": 20,
+      "avg": 133.0
+    },
+    "C_Pyridin-D5 (C5D5N)": {
+      "min": 130.8,
+      "max": 131.39,
+      "cnt": 8,
+      "avg": 131.93
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 130.8,
+      "max": 132.7486,
+      "cnt": 42,
+      "avg": 136.3
+    },
+    "C_Unreported": {
+      "min": 130.2,
+      "max": 132.6145,
+      "cnt": 242,
+      "avg": 139.5
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 129.6,
+      "max": 130.545,
+      "cnt": 12,
+      "avg": 132.5
+    },
+    "C_Benzene-D6 (C6D6)": {
+      "min": 130.1,
+      "max": 131.1333,
+      "cnt": 6,
+      "avg": 132.1
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 130.1,
+      "max": 133.0213,
+      "cnt": 196,
+      "avg": 139.2
+    },
+    "C_Chloroform-D1 (CDCl3) + Benzene-D6 (C6D6)": {
+      "min": 132.7,
+      "max": 134.1667,
+      "cnt": 6,
+      "avg": 135.0
+    }
+  },
+  "HHHC(HCC/H=C,HHH/\\H|C)@HCO/@HCO,C/": {
+    "n": "C",
+    "s": "CC(C)C=CC",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 21.3,
+      "max": 21.3,
+      "cnt": 1,
+      "avg": 21.3
+    }
+  },
+  "HHCC(@HOC,H=C/C,=CC,|C\\C/@CHO,\\H|C,HHH,HHH,HHH)@HCO,C,H=C/": {
+    "n": "C",
+    "s": "C(C(O)C)C(OC(O)C)(C(=CC)C)=C(C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 19.4,
+      "max": 19.4,
+      "cnt": 1,
+      "avg": 19.4
+    }
+  },
+  "H=CC(HC,H=C/HCC,|C\\C/@HCC,HHH,H=C,HHH)": {
+    "n": "C",
+    "s": "C(=C)C(=C(C=C)C)C(C)C(C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 125.7,
+      "max": 125.7,
+      "cnt": 1,
+      "avg": 125.7
+    }
+  },
+  "=CCC(HC,HCO,HHH/": {
+    "n": "C",
+    "s": "C(=C)(C)C(C)(O)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 142.3,
+      "max": 142.3,
+      "cnt": 1,
+      "avg": 142.3
+    },
+    "C_Acetonitrile-D3(CD3CN)": {
+      "min": 138.0,
+      "max": 138.05,
+      "cnt": 2,
+      "avg": 138.1
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 136.4,
+      "max": 137.3667,
+      "cnt": 3,
+      "avg": 139.3
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 139.0,
+      "max": 139.4111,
+      "cnt": 9,
+      "avg": 140.1
+    },
+    "C_Unreported": {
+      "min": 130.35,
+      "max": 178.1,
+      "cnt": 38,
+      "avg": 169.5137
+    },
+    "C_Benzene-D6 (C6D6)": {
+      "min": 131.4,
+      "max": 131.75,
+      "cnt": 2,
+      "avg": 132.1
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 129.0,
+      "max": 135.4074,
+      "cnt": 19,
+      "avg": 143.2
+    }
+  },
+  "HHHC(=CC/|C\\C,HHC/": {
+    "n": "C",
+    "s": "CC(=C(C)C)CC",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 17.9,
+      "max": 17.9,
+      "cnt": 1,
+      "avg": 17.9
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 20.2,
+      "max": 21.45,
+      "cnt": 2,
+      "avg": 22.7
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 21.3,
+      "max": 21.3,
+      "cnt": 1,
+      "avg": 21.3
+    },
+    "C_Unreported": {
+      "min": 13.74,
+      "max": 19.2145,
+      "cnt": 69,
+      "avg": 23.3
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 15.2,
+      "max": 20.1027,
+      "cnt": 14,
+      "avg": 23.0
+    }
+  },
+  "=CCC(HC,H=C,HHH/@COC,\\H|C/HHC,H,HHH,H=C)": {
+    "n": "C",
+    "s": "C(=C)(C)C(=CC=C)C(O)(C)CC",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 141.2,
+      "max": 141.2,
+      "cnt": 1,
+      "avg": 141.2
+    }
+  },
+  "H=CC(HC,=CC/H=C,\\H|C,HHH/|C\\C,@CCO)@HCO,HHH,HHH,HHC,H/HHC,C,H=C/": {
+    "n": "C",
+    "s": "C(=C(OC)CC)C(C=C(C)C)(C)=CC(C)(O)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 132.7,
+      "max": 132.7,
+      "cnt": 1,
+      "avg": 132.7
+    }
+  },
+  "H=CC(HC,=CC/H=C,\\H|C,HHH/": {
+    "n": "C",
+    "s": "C(=C)C(C=C)(=CC)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 132.7,
+      "max": 132.7,
+      "cnt": 1,
+      "avg": 132.7
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 149.6,
+      "max": 149.6,
+      "cnt": 1,
+      "avg": 149.6
+    },
+    "C_Unreported": {
+      "min": 133.8,
+      "max": 140.82,
+      "cnt": 5,
+      "avg": 149.3
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 135.0,
+      "max": 140.3109,
+      "cnt": 11,
+      "avg": 148.8
+    }
+  },
+  "C(HCC/HCC,=OC/": {
+    "n": "C",
+    "s": "CC(C(C)=O)C(C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 12.2,
+      "max": 12.2,
+      "cnt": 1,
+      "avg": 12.2
+    },
+    "C_Pyridin-D5 (C5D5N)": {
+      "min": 14.6,
+      "max": 15.15,
+      "cnt": 2,
+      "avg": 15.7
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 13.1,
+      "max": 13.1,
+      "cnt": 1,
+      "avg": 13.1
+    },
+    "C_Unreported": {
+      "min": 9.5,
+      "max": 12.7474,
+      "cnt": 19,
+      "avg": 18.9
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 10.0,
+      "max": 14.1162,
+      "cnt": 8,
+      "avg": 18.21
+    }
+  },
+  "CCC(H,H,C,C,C,C,HCO/H=C,=OC,HHH,HHH,H=&,H/HC,,=&C)H=C,HHC/CC,H=C/": {
+    "n": "C",
+    "s": "C(C=C(C)C)(CC=C)C(C(=O)C=C)(C)(C)(C)(O)C=CC",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 42.3,
+      "max": 42.3,
+      "cnt": 1,
+      "avg": 42.3
+    }
+  },
+  "=OCC(,@CCH,=CC/HHH,@HCC,|H\\&,HHC/@H&O,HCC,H=C),H,H=C,HHH,\\H|C/": {
+    "n": "C",
+    "s": "C(=O)(C)C(C)(=C)(CC=C)C(CO)C(C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 201.7,
+      "max": 201.7,
+      "cnt": 1,
+      "avg": 201.7
+    }
+  },
+  "CC(HHC,H=C/=CC,CC/HC,HHH,HHH,HHH)H=C/HC/": {
+    "n": "C",
+    "s": "C(C=CC)C(C(=CC)C)=C(C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 25.1,
+      "max": 25.1,
+      "cnt": 1,
+      "avg": 25.1
+    }
+  },
+  "@HCOC(@HOC,H,@OCH/C,HHO,H,@HO&/@H&O,H,H)@,C/": {
+    "n": "C",
+    "s": "C1C(OO)(C)(OO)(C)O(C)C1",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 68.9,
+      "max": 68.9,
+      "cnt": 1,
+      "avg": 68.9
+    }
+  },
+  "CC(HHC,H=C/": {
+    "n": "C",
+    "s": "C(C)C(=C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 25.1,
+      "max": 25.1,
+      "cnt": 1,
+      "avg": 25.1
+    },
+    "C_TETRACHLORO-METHANE (CCl4)": {
+      "min": 32.0,
+      "max": 32.0,
+      "cnt": 1,
+      "avg": 32.0
+    },
+    "C_Acetonitrile-D3(CD3CN)": {
+      "min": 27.4,
+      "max": 28.7333,
+      "cnt": 6,
+      "avg": 32.1
+    },
+    "C_Methanol-D3(CD3OH)": {
+      "min": 26.9,
+      "max": 27.5667,
+      "cnt": 3,
+      "avg": 28.2
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 22.6,
+      "max": 28.0016,
+      "cnt": 25,
+      "avg": 35.5
+    },
+    "C_Pyridin-D5 (C5D5N)": {
+      "min": 26.8,
+      "max": 27.25,
+      "cnt": 4,
+      "avg": 28.2
+    },
+    "C_Unknown": {
+      "min": 17.0,
+      "max": 24.2067,
+      "cnt": 3,
+      "avg": 35.62
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 23.3,
+      "max": 24.6,
+      "cnt": 7,
+      "avg": 26.9
+    },
+    "C_Unreported": {
+      "min": 16.4,
+      "max": 27.3755,
+      "cnt": 533,
+      "avg": 39.5
+    },
+    "C_Chloroform-D1 (CDCl3) + Methanol-D4 (CD3OD)": {
+      "min": 27.0,
+      "max": 30.0667,
+      "cnt": 3,
+      "avg": 36.2
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 21.1,
+      "max": 27.6016,
+      "cnt": 14,
+      "avg": 32.5
+    },
+    "C_Benzene-D6 (C6D6)": {
+      "min": 19.1,
+      "max": 27.5077,
+      "cnt": 13,
+      "avg": 35.0
+    },
+    "C_Chloroform-D1 (CDCl3)+ trace Methanol-D4 (CD3OD)": {
+      "min": 33.5,
+      "max": 33.5,
+      "cnt": 1,
+      "avg": 33.5
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 16.5,
+      "max": 26.5544,
+      "cnt": 164,
+      "avg": 36.5
+    },
+    "C_CDCL3,TMS": {
+      "min": 22.7,
+      "max": 23.05,
+      "cnt": 2,
+      "avg": 23.4
+    }
+  },
+  "@HCCO(": {
+    "n": "C",
+    "s": "C1CCO1",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 60.7,
+      "max": 74.14,
+      "cnt": 7,
+      "avg": 79.7286
+    },
+    "C_Chloroform-D1 (CDCl3) + Dimethylsulphoxide (DMSO-D6, C2D6SO)": {
+      "min": 70.1,
+      "max": 75.76,
+      "cnt": 6,
+      "avg": 81.6833
+    },
+    "C_CD3COCD": {
+      "min": 78.1,
+      "max": 78.1,
+      "cnt": 1,
+      "avg": 78.1
+    },
+    "C_CF3COOD-CD3OD (5:95)": {
+      "min": 71.52,
+      "max": 71.52,
+      "cnt": 1,
+      "avg": 71.52
+    },
+    "C_Acetonitrile-D3(CD3CN)": {
+      "min": 63.5,
+      "max": 77.6,
+      "cnt": 6,
+      "avg": 81.6
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 56.8,
+      "max": 89.3,
+      "cnt": 226,
+      "avg": 86.9969
+    },
+    "C_Pyridin-D5 (C5D5N)": {
+      "min": 63.1,
+      "max": 84.545,
+      "cnt": 104,
+      "avg": 84.6806
+    },
+    "C_Methanol-D4/D2O (CD3OD/D4)": {
+      "min": 78.4,
+      "max": 78.55,
+      "cnt": 2,
+      "avg": 78.7
+    },
+    "C_Unknown": {
+      "min": 68.0,
+      "max": 72.034,
+      "cnt": 5,
+      "avg": 75.24
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 55.3,
+      "max": 81.795,
+      "cnt": 59,
+      "avg": 82.6441
+    },
+    "C_Unreported": {
+      "min": 45.7,
+      "max": 85.45,
+      "cnt": 1520,
+      "avg": 91.2425
+    },
+    "C_Chloroform-D1 (CDCl3) + Methanol-D4 (CD3OD) (9:1)": {
+      "min": 69.9,
+      "max": 77.8909,
+      "cnt": 11,
+      "avg": 87.8
+    },
+    "C_Deuteriumoxide (D2O)": {
+      "min": 65.0,
+      "max": 75.8333,
+      "cnt": 40,
+      "avg": 81.25
+    },
+    "C_Chloroform-D1 (CDCl3) + Methanol-D4 (CD3OD) (5:1)": {
+      "min": 71.5,
+      "max": 71.5,
+      "cnt": 1,
+      "avg": 71.5
+    },
+    "C_Chloroform-D1 (CDCl3) + Methanol-D4 (CD3OD)": {
+      "min": 71.7,
+      "max": 79.4,
+      "cnt": 2,
+      "avg": 75.55
+    },
+    "C_Methylenchloride-D2 (CD2Cl2)": {
+      "min": 76.4,
+      "max": 77.55,
+      "cnt": 2,
+      "avg": 78.7
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 54.0,
+      "max": 85.6667,
+      "cnt": 85,
+      "avg": 83.6329
+    },
+    "C_Benzene-D6 (C6D6)": {
+      "min": 70.4,
+      "max": 82.7,
+      "cnt": 19,
+      "avg": 78.5789
+    },
+    "C_Chloroform-D1 (CDCl3) + Acetone-D6 (CD3COCD3)": {
+      "min": 68.68,
+      "max": 68.68,
+      "cnt": 1,
+      "avg": 68.68
+    },
+    "C_Cyclohexane": {
+      "min": 77.22,
+      "max": 80.78,
+      "cnt": 3,
+      "avg": 84.16
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 48.6,
+      "max": 85.2,
+      "cnt": 481,
+      "avg": 86.1038
+    },
+    "C_Chloroform-D1 (CDCl3) + Benzene-D6 (C6D6)": {
+      "min": 76.0,
+      "max": 76.0,
+      "cnt": 1,
+      "avg": 76.0
+    }
+  },
+  "=OCC(,HCC,=CC/HCC,HHH,H&,HHC/HCC,H&O,H=C)": {
+    "n": "C",
+    "s": "C(=O)(C)C(C)(=C)(CC=C)C(CO)C(C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 201.7,
+      "max": 201.7,
+      "cnt": 1,
+      "avg": 201.7
+    }
+  },
+  "C(=CC/CC,HHC/CCC,HCO,H&O)HH&,H=C,HHH,HHC,H,H/,HC,=OO/": {
+    "n": "C",
+    "s": "CC(C(C)CO)(=C(O)=O)(C)=C(C(O)C)C(C)(C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 17.9,
+      "max": 17.9,
+      "cnt": 1,
+      "avg": 17.9
+    }
+  },
+  "=CCC(HC,HHC,HHH/H=C,HHC/HC,H=C)": {
+    "n": "C",
+    "s": "C(=C)(C)C(C=CC)CC=C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 140.7,
+      "max": 140.7,
+      "cnt": 1,
+      "avg": 140.7
+    },
+    "C_Acetonitrile-D3(CD3CN)": {
+      "min": 136.8,
+      "max": 136.8,
+      "cnt": 1,
+      "avg": 136.8
+    }
+  },
+  "CCC(H=C,HHH,HHH/": {
+    "n": "C",
+    "s": "C(C)(C)C=C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 30.8,
+      "max": 30.8,
+      "cnt": 1,
+      "avg": 30.8
+    },
+    "C_Unreported": {
+      "min": 24.4,
+      "max": 29.3987,
+      "cnt": 23,
+      "avg": 34.4
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 30.0,
+      "max": 30.0,
+      "cnt": 1,
+      "avg": 30.0
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 26.6,
+      "max": 29.3833,
+      "cnt": 6,
+      "avg": 31.1
+    }
+  },
+  "H=CC(HC,=OO/H=C,,H/\\H|C)HHC/@CCO/": {
+    "n": "C",
+    "s": "C(=CC(C)(O)C)C(=O)(O)C=CC",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 122.5,
+      "max": 122.5,
+      "cnt": 1,
+      "avg": 122.5
+    }
+  },
+  "=CCC(HC,H=C,HHH/@COC,\\H|C/HHC,H,HHH,H=C)H=C,|C\\C/": {
+    "n": "C",
+    "s": "C(=C=C)(C(C)C)C(=CC=C)C(O)(C)CC",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 141.2,
+      "max": 141.2,
+      "cnt": 1,
+      "avg": 141.2
+    }
+  },
+  "H=CC(CC,@CCO/": {
+    "n": "C",
+    "s": "C(=C)C(C)(C)(C)(O)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 132.7,
+      "max": 132.7,
+      "cnt": 1,
+      "avg": 132.7
+    },
+    "C_Unreported": {
+      "min": 114.3,
+      "max": 134.7,
+      "cnt": 3,
+      "avg": 126.0967
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 148.0,
+      "max": 148.0,
+      "cnt": 1,
+      "avg": 148.0
+    }
+  },
+  "@HCOC(@HOC,H,@OCH/C,HHO,H,@HO&/@H&O,H,H)": {
+    "n": "C",
+    "s": "C1C(OO)(C)(OO)(C)O(C)C1",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 68.9,
+      "max": 68.9,
+      "cnt": 1,
+      "avg": 68.9
+    }
+  },
+  "@HCOC(@HOC,H,@OCH/": {
+    "n": "C",
+    "s": "C1C(O)(C)(O)(C)OC1",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 68.9,
+      "max": 72.7,
+      "cnt": 2,
+      "avg": 70.8
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 70.25,
+      "max": 75.6,
+      "cnt": 3,
+      "avg": 73.0667
+    },
+    "C_Pyridin-D5 (C5D5N)": {
+      "min": 70.8,
+      "max": 73.2317,
+      "cnt": 6,
+      "avg": 76.69
+    },
+    "C_Unknown": {
+      "min": 70.71,
+      "max": 70.71,
+      "cnt": 1,
+      "avg": 70.71
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 74.15,
+      "max": 74.15,
+      "cnt": 1,
+      "avg": 74.15
+    },
+    "C_Unreported": {
+      "min": 64.5,
+      "max": 75.2,
+      "cnt": 20,
+      "avg": 76.95
+    },
+    "C_Deuteriumoxide (D2O)": {
+      "min": 69.1801,
+      "max": 71.285,
+      "cnt": 5,
+      "avg": 71.788
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 70.1,
+      "max": 81.7,
+      "cnt": 3,
+      "avg": 74.9667
+    }
+  },
+  "HHHC(HCC/H=C,HHH/": {
+    "n": "C",
+    "s": "CC(C=C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 21.3,
+      "max": 21.3,
+      "cnt": 1,
+      "avg": 21.3
+    },
+    "C_Unreported": {
+      "min": 20.3,
+      "max": 22.6611,
+      "cnt": 27,
+      "avg": 23.8
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 21.4,
+      "max": 21.45,
+      "cnt": 2,
+      "avg": 21.5
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 22.6,
+      "max": 22.9667,
+      "cnt": 6,
+      "avg": 23.4
+    }
+  },
+  "=CCC(CC,CCC,HCO/HHC,HHH,HH&,H=C,HHH,HHC,H/H&O,HC,=OO),H,H=C,,H/": {
+    "n": "C",
+    "s": "C(=C)(C)C(C)(C)(C=CC)(C)(CC(O)=O)(O)CCO",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 138.5,
+      "max": 138.5,
+      "cnt": 1,
+      "avg": 138.5
+    }
+  },
+  "CCO(HCO,HCO,H/HCO,H,H=C,H/": {
+    "n": "C",
+    "s": "C(C)(C)O(O)(C=C)(O)C(O)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 72.7,
+      "max": 72.7,
+      "cnt": 1,
+      "avg": 72.7
+    },
+    "C_Unreported": {
+      "min": 74.3,
+      "max": 74.3,
+      "cnt": 1,
+      "avg": 74.3
+    }
+  },
+  "H=CC(HC,@HCO/HHC,@HCO,H/=CC,@OCH,H)\\H|C,=OC,H,@OCH/": {
+    "n": "C",
+    "s": "C(=CC)C(CC(C)=C)(O)C(O)C(C)O",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 133.2,
+      "max": 133.2,
+      "cnt": 1,
+      "avg": 133.2
+    }
+  },
+  "=CC(HC,=OO/": {
+    "n": "C",
+    "s": "C(=C)C(=O)(O)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 122.5,
+      "max": 122.5,
+      "cnt": 1,
+      "avg": 122.5
+    },
+    "C_Dimethylsulphoxide (DMSO-D6, C2D6SO) + Trifluoroacetic Acid (TFA-D1, C2DF3O2)": {
+      "min": 114.7,
+      "max": 114.7,
+      "cnt": 1,
+      "avg": 114.7
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 111.4,
+      "max": 115.7367,
+      "cnt": 39,
+      "avg": 127.1
+    },
+    "C_Pyridin-D5 (C5D5N)": {
+      "min": 113.9,
+      "max": 122.962,
+      "cnt": 5,
+      "avg": 136.42
+    },
+    "C_Unknown": {
+      "min": 118.64,
+      "max": 120.27,
+      "cnt": 2,
+      "avg": 121.9
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 114.3,
+      "max": 117.215,
+      "cnt": 6,
+      "avg": 122.1
+    },
+    "C_Unreported": {
+      "min": 101.9,
+      "max": 119.7792,
+      "cnt": 280,
+      "avg": 137.8
+    },
+    "C_Deuteriumoxide (D2O)": {
+      "min": 121.641,
+      "max": 123.4837,
+      "cnt": 3,
+      "avg": 126.31
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 112.3,
+      "max": 118.2036,
+      "cnt": 25,
+      "avg": 134.88
+    },
+    "C_Benzene-D6 (C6D6)": {
+      "min": 118.8,
+      "max": 119.6,
+      "cnt": 3,
+      "avg": 120.0
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 112.0,
+      "max": 119.2653,
+      "cnt": 74,
+      "avg": 145.1
+    }
+  },
+  "C(=CC/HC,H=C/": {
+    "n": "C",
+    "s": "CC(C=C)=CC",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 13.2,
+      "max": 14.05,
+      "cnt": 2,
+      "avg": 14.9
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 12.7,
+      "max": 14.3875,
+      "cnt": 4,
+      "avg": 19.05
+    },
+    "C_Unreported": {
+      "min": 11.0,
+      "max": 17.9813,
+      "cnt": 55,
+      "avg": 28.7
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 12.5,
+      "max": 12.5,
+      "cnt": 1,
+      "avg": 12.5
+    },
+    "C_Benzene-D6 (C6D6)": {
+      "min": 15.5,
+      "max": 15.5,
+      "cnt": 1,
+      "avg": 15.5
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 11.86,
+      "max": 14.7268,
+      "cnt": 37,
+      "avg": 25.4
+    }
+  },
+  "HHCC(@HOC,H=C/C,=CC,|C\\C/@CHO,\\H|C,HHH,HHH,HHH)": {
+    "n": "C",
+    "s": "C(C)C(OC(O)C)(C(=CC)C)=C(C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 19.4,
+      "max": 19.4,
+      "cnt": 1,
+      "avg": 19.4
+    }
+  },
+  "H=CC(": {
+    "n": "C",
+    "s": "C(C)=C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 120.8,
+      "max": 142.9,
+      "cnt": 23,
+      "avg": 146.1522
+    },
+    "C_TETRACHLORO-METHANE (CCl4)": {
+      "min": 119.2,
+      "max": 137.1,
+      "cnt": 22,
+      "avg": 132.6136
+    },
+    "C_Chloroform-D1 (CDCl3) + Dimethylsulphoxide (DMSO-D6, C2D6SO)": {
+      "min": 102.5,
+      "max": 127.8,
+      "cnt": 6,
+      "avg": 128.8
+    },
+    "C_METHANOL-D1 (CH3OD)": {
+      "min": 122.5,
+      "max": 133.3,
+      "cnt": 4,
+      "avg": 142.1
+    },
+    "C_Chloroform-D1 (CDCl3) + Methanol-D4 (CD3OD) (4:1)": {
+      "min": 117.5,
+      "max": 129.1,
+      "cnt": 2,
+      "avg": 140.7
+    },
+    "C_Dimethylsulphoxide (DMSO-D6, C2D6SO) + Trifluoroacetic Acid (TFA-D1, C2DF3O2)": {
+      "min": 114.7,
+      "max": 130.0,
+      "cnt": 2,
+      "avg": 145.3
+    },
+    "C_CF3COOD-CD3OD (5:95)": {
+      "min": 107.48,
+      "max": 107.48,
+      "cnt": 1,
+      "avg": 107.48
+    },
+    "C_Acetonitrile-D3(CD3CN)": {
+      "min": 75.4,
+      "max": 120.3968,
+      "cnt": 31,
+      "avg": 142.6355
+    },
+    "C_Methanol-D3(CD3OH)": {
+      "min": 123.0,
+      "max": 130.725,
+      "cnt": 4,
+      "avg": 136.4
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 95.7,
+      "max": 143.8,
+      "cnt": 359,
+      "avg": 153.7649
+    },
+    "C_Pyridin-D5 (C5D5N)": {
+      "min": 106.5,
+      "max": 133.6,
+      "cnt": 69,
+      "avg": 150.6913
+    },
+    "C_Methanol-D4/D2O (CD3OD/D4)": {
+      "min": 127.2,
+      "max": 127.2,
+      "cnt": 1,
+      "avg": 127.2
+    },
+    "C_Unknown": {
+      "min": 100.36,
+      "max": 135.335,
+      "cnt": 27,
+      "avg": 149.5826
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 89.93,
+      "max": 128.6946,
+      "cnt": 196,
+      "avg": 148.1245
+    },
+    "C_Unreported": {
+      "min": 18.6,
+      "max": 152.9,
+      "cnt": 8740,
+      "avg": 169.7533
+    },
+    "C_Chloroform-D1 (CDCl3) + Methanol-D4 (CD3OD) (9:1)": {
+      "min": 116.6,
+      "max": 117.2,
+      "cnt": 2,
+      "avg": 117.8
+    },
+    "C_Deuteriumoxide (D2O)": {
+      "min": 102.9,
+      "max": 131.1164,
+      "cnt": 17,
+      "avg": 142.1576
+    },
+    "C_Chloroform-D1 (CDCl3) + Methanol-D4 (CD3OD) (5:1)": {
+      "min": 138.2,
+      "max": 138.2,
+      "cnt": 1,
+      "avg": 138.2
+    },
+    "C_Chloroform-D1 (CDCl3) + Methanol-D4 (CD3OD)": {
+      "min": 97.1,
+      "max": 138.35,
+      "cnt": 6,
+      "avg": 129.45
+    },
+    "C_Methylenchloride-D2 (CD2Cl2)": {
+      "min": 104.46,
+      "max": 130.825,
+      "cnt": 10,
+      "avg": 136.4
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 92.8,
+      "max": 133.25,
+      "cnt": 237,
+      "avg": 156.6247
+    },
+    "C_Benzene-D6 (C6D6)": {
+      "min": 79.5,
+      "max": 145.65,
+      "cnt": 81,
+      "avg": 146.3407
+    },
+    "C_Tetrahydrofuran-D8 (THF-D8, C4D4O)": {
+      "min": 33.2,
+      "max": 100.1333,
+      "cnt": 9,
+      "avg": 123.6333
+    },
+    "C_Chloroform-D1 (CDCl3) + Pyridin-D5 (C5D5N)": {
+      "min": 122.15,
+      "max": 122.15,
+      "cnt": 1,
+      "avg": 122.15
+    },
+    "C_Chloroform-D1 (CDCl3) + Acetone-D6 (CD3COCD3)": {
+      "min": 122.2,
+      "max": 122.2,
+      "cnt": 1,
+      "avg": 122.2
+    },
+    "C_Chloroform-D1 (CDCl3)+ trace Methanol-D4 (CD3OD)": {
+      "min": 123.3,
+      "max": 130.35,
+      "cnt": 2,
+      "avg": 137.4
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 48.0,
+      "max": 150.5,
+      "cnt": 1803,
+      "avg": 158.9264
+    },
+    "C_CDCL3,TMS": {
+      "min": 123.0,
+      "max": 126.1,
+      "cnt": 10,
+      "avg": 128.3
+    },
+    "C_Chloroform-D1 (CDCl3) + Benzene-D6 (C6D6)": {
+      "min": 117.9,
+      "max": 127.525,
+      "cnt": 6,
+      "avg": 136.1
+    }
+  },
+  "=CC(CC,HHC/HHH,HHH,HHC/=CC)HC,HHH/": {
+    "n": "C",
+    "s": "C(=CC)C(C)(C)CC(C)=C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 122.8,
+      "max": 122.8,
+      "cnt": 1,
+      "avg": 122.8
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 125.5,
+      "max": 125.55,
+      "cnt": 3,
+      "avg": 125.6
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 123.6,
+      "max": 124.55,
+      "cnt": 2,
+      "avg": 125.5
+    },
+    "C_Unreported": {
+      "min": 122.6,
+      "max": 124.0492,
+      "cnt": 25,
+      "avg": 125.8
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 124.0,
+      "max": 124.025,
+      "cnt": 2,
+      "avg": 124.05
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 123.7,
+      "max": 123.9866,
+      "cnt": 11,
+      "avg": 124.4
+    }
+  },
+  "C(=CC/HC,HCO/": {
+    "n": "C",
+    "s": "CC(=CC)C(O)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 12.8,
+      "max": 12.8,
+      "cnt": 1,
+      "avg": 12.8
+    },
+    "C_Acetonitrile-D3(CD3CN)": {
+      "min": 11.0,
+      "max": 11.05,
+      "cnt": 2,
+      "avg": 11.1
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 11.8,
+      "max": 13.65,
+      "cnt": 2,
+      "avg": 15.5
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 15.1,
+      "max": 15.3,
+      "cnt": 9,
+      "avg": 15.5
+    },
+    "C_Unreported": {
+      "min": 10.37,
+      "max": 15.0312,
+      "cnt": 24,
+      "avg": 20.8
+    },
+    "C_Benzene-D6 (C6D6)": {
+      "min": 11.3,
+      "max": 11.35,
+      "cnt": 2,
+      "avg": 11.4
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 11.5,
+      "max": 15.3437,
+      "cnt": 16,
+      "avg": 20.6
+    }
+  },
+  "@HCOC(HHC,H,HHC/": {
+    "n": "C",
+    "s": "C1C(C)(C)OC1",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 67.0,
+      "max": 67.0,
+      "cnt": 1,
+      "avg": 67.0
+    },
+    "C_D2O+DCl": {
+      "min": 65.3,
+      "max": 65.3,
+      "cnt": 1,
+      "avg": 65.3
+    },
+    "C_Acetonitrile-D3(CD3CN)": {
+      "min": 61.7,
+      "max": 69.2,
+      "cnt": 2,
+      "avg": 65.45
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 65.3,
+      "max": 70.5,
+      "cnt": 6,
+      "avg": 71.0667
+    },
+    "C_Pyridin-D5 (C5D5N)": {
+      "min": 63.8,
+      "max": 70.7,
+      "cnt": 3,
+      "avg": 68.4867
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 65.9,
+      "max": 70.2667,
+      "cnt": 4,
+      "avg": 69.35
+    },
+    "C_Unreported": {
+      "min": 54.1,
+      "max": 68.181,
+      "cnt": 24,
+      "avg": 71.2292
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 65.47,
+      "max": 68.15,
+      "cnt": 4,
+      "avg": 69.195
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 63.4,
+      "max": 70.31,
+      "cnt": 18,
+      "avg": 71.0444
+    }
+  },
+  "CC(CCC,HCO/=CC,H=C,HHH,HH&,H/": {
+    "n": "C",
+    "s": "C(C)C(C(C)=C)(C=C)(C)(O)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 48.9,
+      "max": 48.9,
+      "cnt": 1,
+      "avg": 48.9
+    }
+  },
+  "@HCCO(@HCO,HHO,C/@HCO,H,H,@O&H/": {
+    "n": "C",
+    "s": "C1C(C)(O)(OO)(C)C(C)(O)O1",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 75.3,
+      "max": 75.3,
+      "cnt": 1,
+      "avg": 75.3
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 74.1,
+      "max": 74.1,
+      "cnt": 1,
+      "avg": 74.1
+    },
+    "C_Unreported": {
+      "min": 72.9,
+      "max": 74.55,
+      "cnt": 2,
+      "avg": 76.2
+    }
+  },
+  "HHCC(@HOC,=OO/": {
+    "n": "C",
+    "s": "C(C)C(C)(=O)(O)O",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 42.2,
+      "max": 42.2,
+      "cnt": 1,
+      "avg": 42.2
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 38.4,
+      "max": 38.4,
+      "cnt": 1,
+      "avg": 38.4
+    },
+    "C_Pyridin-D5 (C5D5N)": {
+      "min": 35.3,
+      "max": 35.3,
+      "cnt": 1,
+      "avg": 35.3
+    },
+    "C_Unreported": {
+      "min": 33.7,
+      "max": 40.8333,
+      "cnt": 26,
+      "avg": 41.2538
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 36.0,
+      "max": 36.05,
+      "cnt": 2,
+      "avg": 36.1
+    },
+    "C_Benzene-D6 (C6D6)": {
+      "min": 40.5,
+      "max": 40.55,
+      "cnt": 2,
+      "avg": 40.6
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 30.06,
+      "max": 39.125,
+      "cnt": 6,
+      "avg": 37.1767
+    }
+  },
+  "CCCO(HHC,HHH,HHH,H/H=C/\\H|C)": {
+    "n": "C",
+    "s": "C(C)(C)(C)OC=CC",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 77.8,
+      "max": 77.8,
+      "cnt": 1,
+      "avg": 77.8
+    }
+  },
+  "C(HCC/H=C,HHH/HC)": {
+    "n": "C",
+    "s": "CC(C)C=CC",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 21.3,
+      "max": 21.3,
+      "cnt": 1,
+      "avg": 21.3
+    },
+    "C_Unreported": {
+      "min": 20.3,
+      "max": 22.6427,
+      "cnt": 15,
+      "avg": 23.8
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 21.4,
+      "max": 21.45,
+      "cnt": 2,
+      "avg": 21.5
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 22.6,
+      "max": 22.9667,
+      "cnt": 6,
+      "avg": 23.4
+    }
+  },
+  "HHCC(=C,@HO,C,C/": {
+    "n": "C",
+    "s": "C(C)C(O)(C)(C)=C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 44.5,
+      "max": 44.5,
+      "cnt": 1,
+      "avg": 44.5
+    },
+    "C_Pyridin-D5 (C5D5N)": {
+      "min": 42.1,
+      "max": 43.29,
+      "cnt": 2,
+      "avg": 44.48
+    },
+    "C_Acetone-D6 ((CD3)2CO)": {
+      "min": 41.7,
+      "max": 41.7,
+      "cnt": 1,
+      "avg": 41.7
+    },
+    "C_Unreported": {
+      "min": 26.7,
+      "max": 48.3667,
+      "cnt": 13,
+      "avg": 42.6
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 47.5,
+      "max": 47.5,
+      "cnt": 1,
+      "avg": 47.5
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 30.1,
+      "max": 42.7,
+      "cnt": 6,
+      "avg": 45.2833
+    }
+  },
+  "CCO(H,HC,CO,O,H/HCO,HHO,&,H/": {
+    "n": "C",
+    "s": "C(C)(C)O(CO)(O)(O)C(O)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 68.9,
+      "max": 68.9,
+      "cnt": 1,
+      "avg": 68.9
+    },
+    "C_CD3COCD": {
+      "min": 71.7,
+      "max": 71.7,
+      "cnt": 1,
+      "avg": 71.7
+    },
+    "C_Methanol-D4 (CD3OD)": {
+      "min": 68.77,
+      "max": 72.31,
+      "cnt": 9,
+      "avg": 77.9
+    },
+    "C_Pyridin-D5 (C5D5N)": {
+      "min": 70.8,
+      "max": 71.9169,
+      "cnt": 13,
+      "avg": 72.8
+    },
+    "C_Unknown": {
+      "min": 70.65,
+      "max": 70.68,
+      "cnt": 2,
+      "avg": 70.71
+    },
+    "C_Unreported": {
+      "min": 65.0,
+      "max": 70.1511,
+      "cnt": 19,
+      "avg": 72.0
+    },
+    "C_Deuteriumoxide (D2O)": {
+      "min": 69.9,
+      "max": 70.9683,
+      "cnt": 6,
+      "avg": 72.1
+    },
+    "C_Dimethylsulphoxide-D6 (DMSO-D6, C2D6SO)": {
+      "min": 70.0,
+      "max": 70.9533,
+      "cnt": 3,
+      "avg": 71.8
+    },
+    "C_Chloroform-D1 (CDCl3)": {
+      "min": 71.6,
+      "max": 71.6,
+      "cnt": 2,
+      "avg": 71.6
+    }
+  },
+  "=CC(CC,HCO/HH,=OC,C,HC&,H/,H&C,H=C,HCC),HHH,HC,H=C,HHH/,HCO,HC/": {
+    "n": "C",
+    "s": "C(=C)C(C)(C(=O)CC)(CC=C)OC(C)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 142.9,
+      "max": 142.9,
+      "cnt": 1,
+      "avg": 142.9
+    }
+  },
+  "=CC(HC,=CC/H=C,HC,HHH/CC,CCO)HCO,HHH,HHC,HHH,H/": {
+    "n": "C",
+    "s": "C(=C(O)C)C(C=C(C)C)(C)=CC(C)(O)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 132.7,
+      "max": 132.7,
+      "cnt": 1,
+      "avg": 132.7
+    }
+  },
+  "H=CC(HC,H=C/@CCC,|C\\C/=CC,HHH,HHC,HHC,HHH)\\C|C,@HCO,@O&H,HHC/HH&,HHH,HHC,H,H,H=C/": {
+    "n": "C",
+    "s": "C(=C(C)C)C(=C(C)CC)C(C(C)=C)(CC)C",
+    "C_Pyridin-D5 (C5D5N) + Methanol-D4 (CD3OD)": {
+      "min": 127.0,
+      "max": 127.0,
+      "cnt": 1,
+      "avg": 127.0
+    }
+  }
+}
