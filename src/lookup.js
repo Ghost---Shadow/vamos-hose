@@ -1,6 +1,7 @@
+const { smilesToHoseCodes } = require('./smiles-to-hose');
+const { loadDatabase, queryHose } = require('./database');
+
 /**
- * NMR Shift Lookup
- *
  * Given a SMILES string, returns predicted 13C NMR chemical shifts
  * by converting the SMILES to HOSE codes and looking them up in
  * the preprocessed database.
@@ -10,12 +11,29 @@
  * @returns {Array<{shift: number, atom: string, hose: string, smiles: string}>}
  */
 function lookupNmrShifts(smiles, options = {}) {
-  // TODO: Implement
-  // 1. Parse SMILES into a molecule
-  // 2. Generate HOSE codes for each atom
-  // 3. Look up each HOSE code in the database
-  // 4. Return array of shift predictions
-  throw new Error('Not implemented yet');
+  const { nucleus = '13C' } = options;
+
+  // Step 1: SMILES -> per-atom HOSE codes
+  const hoseCodes = smilesToHoseCodes(smiles, { nucleus });
+
+  // Step 2: Load database (cached after first call)
+  const db = loadDatabase();
+
+  // Step 3: Look up each HOSE code and collect shifts
+  const results = [];
+  for (const entry of hoseCodes) {
+    const hit = queryHose(db, entry.hose);
+    if (hit) {
+      results.push({
+        shift: hit.avgShift,
+        atom: entry.atom,
+        hose: entry.hose,
+        smiles: hit.smiles,
+      });
+    }
+  }
+
+  return results;
 }
 
 module.exports = { lookupNmrShifts };
