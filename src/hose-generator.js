@@ -77,7 +77,7 @@ function generateHoseCode(mol, atomIndex, options = {}) {
   }
 
   // Generate code string
-  return buildHoseString(mol, spheres, maxSpheres);
+  return buildHoseString(mol, spheres, maxSpheres, atomIndex);
 }
 
 /**
@@ -99,16 +99,10 @@ function makeNode(atomIdx, element, bondOrder, parent, isRingClosure, implicitH 
 
 /**
  * Build sphere 0: direct neighbors of the central atom.
+ * Note: The center atom itself is NOT included - that's handled separately in buildHoseString.
  */
 function buildSphere0(mol, centerIdx, visited) {
   const nodes = [];
-
-  // Add implicit hydrogens first
-  const implicitH = mol.getImplicitHydrogens(centerIdx);
-  for (let i = 0; i < implicitH; i++) {
-    // Hydrogens are always terminal (stoppers with no children)
-    nodes.push(makeNode(-1, 'H', 1, null, false, 0));
-  }
 
   // Add heavy atom neighbors
   const connCount = mol.getConnAtoms(centerIdx);
@@ -219,11 +213,34 @@ function compareNodes(a, b) {
 
 /**
  * Build the HOSE code string from sorted spheres.
+ * The center atom is NOT in spheres[0] - we need to output it separately.
  */
-function buildHoseString(mol, spheres, maxSpheres) {
+function buildHoseString(mol, spheres, maxSpheres, centerIdx) {
   let code = '';
 
+  // Output sphere 0: the center atom itself
+  const centerImplicitH = mol.getImplicitHydrogens(centerIdx);
+  const centerElement = mol.getAtomLabel(centerIdx);
+  code += 'H'.repeat(centerImplicitH);
+  code += bremserElement(centerElement);
+
+  // Find last non-empty sphere
+  let lastNonEmptySphere = -1;
   for (let s = 0; s < spheres.length && s < maxSpheres; s++) {
+    if (spheres[s].length > 0) {
+      lastNonEmptySphere = s;
+    }
+  }
+
+  // Output spheres 1+ (spheres[0] = neighbors, spheres[1] = 2nd shell, etc.)
+  for (let s = 0; s <= lastNonEmptySphere; s++) {
+    // Output sphere delimiter BEFORE sphere content
+    if (s < SPHERE_DELIMITERS.length) {
+      code += SPHERE_DELIMITERS[s];
+    } else {
+      code += '/';
+    }
+
     const sphere = spheres[s];
     let lastParent = null;
     let firstInSphere = true;
@@ -243,24 +260,27 @@ function buildHoseString(mol, spheres, maxSpheres) {
       const isRingClosure = node.stopper && node.element !== 'H';
       const elemSym = isRingClosure ? '&' : bremserElement(node.element);
 
-      // Ring marker: prepend @ if atom is in a ring (sphere 0 only)
+      // Ring marker: prepend @ if atom is in a ring (sphere 0/1 only)
       if (s === 0 && !node.stopper && isRingAtomInSphere0(node, spheres)) {
         code += '@';
       }
 
       code += bondSym;
 
-      // For non-hydrogen, non-ring-closure atoms in sphere 1+, prepend implicit hydrogens
-      if (s > 0 && !isRingClosure && node.element !== 'H') {
+      // For non-hydrogen, non-ring-closure atoms, prepend implicit hydrogens
+      if (!isRingClosure && node.element !== 'H') {
         code += 'H'.repeat(node.implicitH);
       }
 
       code += elemSym;
     }
+  }
 
-    // Append sphere delimiter
-    if (s < SPHERE_DELIMITERS.length) {
-      code += SPHERE_DELIMITERS[s];
+  // Add trailing delimiter if we output any spheres
+  if (lastNonEmptySphere >= 0) {
+    const delimiterIdx = lastNonEmptySphere + 1;
+    if (delimiterIdx < SPHERE_DELIMITERS.length) {
+      code += SPHERE_DELIMITERS[delimiterIdx];
     } else {
       code += '/';
     }

@@ -19,6 +19,6 @@
   "homepage": "https://github.com/Ghost---Shadow/vamos-hose#readme",
   "description": "",
   "dependencies": {
-    "openchemlib": "^8.13.0"
+    "openchemlib": "^9.20.0"
   }
 }
