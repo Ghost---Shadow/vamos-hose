@@ -33,7 +33,7 @@ export function lookupNmrShifts(smiles, options = {}) {
     if (!hit) {
       let truncated = hoseToUse;
       // Try removing last sphere (everything from last delimiter onwards)
-      for (let attempt = 0; attempt < 3 && !hit; attempt++) {
+      for (let attempt = 0; attempt < 8 && !hit; attempt++) {
         const lastDelimIdx = Math.max(
           truncated.lastIndexOf('/'),
           truncated.lastIndexOf(')'),

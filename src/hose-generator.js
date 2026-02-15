@@ -218,10 +218,29 @@ function compareNodes(a, b) {
 function buildHoseString(mol, spheres, maxSpheres, centerIdx) {
   let code = '';
 
+  // Find the maximum bond order of the center atom
+  let maxBondOrder = 1;
+  const centerConnCount = mol.getConnAtoms(centerIdx);
+  for (let i = 0; i < centerConnCount; i++) {
+    const bondIdx = mol.getConnBond(centerIdx, i);
+    const bondOrder = getBondOrder(mol, bondIdx);
+    if (bondOrder > maxBondOrder) {
+      maxBondOrder = bondOrder;
+    }
+  }
+
   // Output sphere 0: the center atom itself
+  // Format: implicit H's, bond symbol, element
   const centerImplicitH = mol.getImplicitHydrogens(centerIdx);
   const centerElement = mol.getAtomLabel(centerIdx);
+
   code += 'H'.repeat(centerImplicitH);
+
+  // Add bond symbol if max bond order > 1
+  if (maxBondOrder > 1) {
+    code += BOND_SYMBOL[maxBondOrder] || '';
+  }
+
   code += bremserElement(centerElement);
 
   // Find last non-empty sphere
