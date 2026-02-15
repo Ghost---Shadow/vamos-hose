@@ -1,5 +1,5 @@
-const { generateHoseCode } = require('./hose-generator');
-
+import { generateHoseCode } from './hose-generator.js';
+import OCL from 'openchemlib';
 describe('generateHoseCode', () => {
   test('throws not implemented', () => {
     const molecule = {

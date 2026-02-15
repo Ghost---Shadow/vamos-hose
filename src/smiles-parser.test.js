@@ -1,8 +1,11 @@
-const { parseSMILES } = require('./smiles-parser');
+import { parseSMILES } from './smiles-parser.js';
 
 describe('parseSMILES', () => {
-  test('throws not implemented', () => {
-    expect(() => parseSMILES('C')).toThrow('Not implemented');
+  test('returns openchemlib Molecule object', () => {
+    const mol = parseSMILES('C');
+    expect(mol).toBeDefined();
+    expect(typeof mol.getAllAtoms).toBe('function');
+    expect(mol.getAllAtoms()).toBeGreaterThan(0);
   });
 
   // Tests below define the expected interface once implemented.

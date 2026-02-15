@@ -1,9 +1,9 @@
-const {
+import {
   loadDatabase,
   queryHose,
   computeWeightedAvg,
   extractSolvents,
-} = require('./database');
+} from './database.js';
 
 describe('computeWeightedAvg', () => {
   test('single solvent', () => {

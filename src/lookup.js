@@ -1,5 +1,5 @@
-const { smilesToHoseCodes } = require('./smiles-to-hose');
-const { loadDatabase, queryHose } = require('./database');
+import { smilesToHoseCodes } from './smiles-to-hose.js';
+import { loadDatabase, queryHose } from './database.js';
 
 /**
  * Given a SMILES string, returns predicted 13C NMR chemical shifts
@@ -10,7 +10,7 @@ const { loadDatabase, queryHose } = require('./database');
  * @param {object} options - { nucleus: '13C' }
  * @returns {Array<{shift: number, atom: string, hose: string, smiles: string}>}
  */
-function lookupNmrShifts(smiles, options = {}) {
+export function lookupNmrShifts(smiles, options = {}) {
   const { nucleus = '13C' } = options;
 
   // Step 1: SMILES -> per-atom HOSE codes
@@ -35,5 +35,3 @@ function lookupNmrShifts(smiles, options = {}) {
 
   return results;
 }
-
-module.exports = { lookupNmrShifts };

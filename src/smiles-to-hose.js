@@ -1,5 +1,5 @@
-const { parseSMILES } = require('./smiles-parser');
-const { generateHoseCode } = require('./hose-generator');
+import { parseSMILES } from './smiles-parser.js';
+import { generateHoseCode } from './hose-generator.js';
 
 /**
  * Convert a SMILES string to a list of per-atom HOSE codes.
@@ -8,7 +8,7 @@ const { generateHoseCode } = require('./hose-generator');
  * @param {object} options - { nucleus: '13C' }
  * @returns {Array<{atom: string, index: number, hose: string}>}
  */
-function smilesToHoseCodes(smiles, options = {}) {
+export function smilesToHoseCodes(smiles, options = {}) {
   const { nucleus = '13C' } = options;
   const targetElement = nucleusToElement(nucleus);
 
@@ -17,13 +17,15 @@ function smilesToHoseCodes(smiles, options = {}) {
 
   // Step 2: For each atom of the target element, generate a HOSE code
   const results = [];
-  for (let i = 0; i < molecule.atoms.length; i++) {
-    const atom = molecule.atoms[i];
-    if (atom.element !== targetElement) continue;
+  const numAtoms = molecule.getAllAtoms();
+
+  for (let i = 0; i < numAtoms; i++) {
+    const atomLabel = molecule.getAtomLabel(i);
+    if (atomLabel !== targetElement) continue;
 
     const hose = generateHoseCode(molecule, i, { maxSpheres: 4 });
     results.push({
-      atom: atom.element,
+      atom: atomLabel,
       index: i,
       hose,
     });
@@ -39,11 +41,9 @@ function smilesToHoseCodes(smiles, options = {}) {
  * @param {string} nucleus
  * @returns {string}
  */
-function nucleusToElement(nucleus) {
+export function nucleusToElement(nucleus) {
   const match = nucleus.match(/(\d+)([A-Z][a-z]?)/);
   if (match) return match[2];
   // Fallback: strip digits
   return nucleus.replace(/[0-9]/g, '');
 }
-
-module.exports = { smilesToHoseCodes, nucleusToElement };

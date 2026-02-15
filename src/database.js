@@ -1,5 +1,9 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let _cachedDb = null;
 
@@ -19,7 +23,7 @@ const DB_PATH = path.join(
  *
  * @returns {object} the parsed database object
  */
-function loadDatabase() {
+export function loadDatabase() {
   if (_cachedDb) return _cachedDb;
   const raw = fs.readFileSync(DB_PATH, 'utf-8');
   _cachedDb = JSON.parse(raw);
@@ -36,7 +40,7 @@ function loadDatabase() {
  * @param {string} hoseCode - HOSE code to look up
  * @returns {{ avgShift: number, smiles: string, solvents: object } | null}
  */
-function queryHose(db, hoseCode) {
+export function queryHose(db, hoseCode) {
   const entry = db[hoseCode];
   if (!entry) return null;
 
@@ -57,7 +61,7 @@ function queryHose(db, hoseCode) {
  * @param {object} entry - database entry { n, s, solvent1: {min,max,avg,cnt}, ... }
  * @returns {number} weighted average shift
  */
-function computeWeightedAvg(entry) {
+export function computeWeightedAvg(entry) {
   let totalWeight = 0;
   let weightedSum = 0;
 
@@ -77,7 +81,7 @@ function computeWeightedAvg(entry) {
  * @param {object} entry
  * @returns {object} { solventName: { min, max, avg, cnt }, ... }
  */
-function extractSolvents(entry) {
+export function extractSolvents(entry) {
   const solvents = {};
   for (const [key, val] of Object.entries(entry)) {
     if (key === 'n' || key === 's') continue;
@@ -85,5 +89,3 @@ function extractSolvents(entry) {
   }
   return solvents;
 }
-
-module.exports = { loadDatabase, queryHose, computeWeightedAvg, extractSolvents };

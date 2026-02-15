@@ -1,0 +1,15 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 0,
+  "workspaces": {
+    "": {
+      "name": "vamos-hose",
+      "dependencies": {
+        "openchemlib": "^8.13.0",
+      },
+    },
+  },
+  "packages": {
+    "openchemlib": ["openchemlib@8.13.0", "", {}, "sha512-CdE9mNFdiQaZbjThvpplKC2YObyg9w4cKbuZ8nn/dRuTvk35H7+LPl2xylm84OGW3062AanU61ms4HnNZOzoXA=="],
+  }
+}

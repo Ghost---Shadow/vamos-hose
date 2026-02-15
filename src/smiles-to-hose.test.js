@@ -1,4 +1,4 @@
-const { nucleusToElement } = require('./smiles-to-hose');
+import { nucleusToElement } from './smiles-to-hose.js';
 
 describe('nucleusToElement', () => {
   test('13C -> C', () => {

@@ -1,10 +1,10 @@
-const { lookupNmrShifts } = require('../src/lookup');
-const {
+import { lookupNmrShifts } from '../src/lookup.js';
+import {
   telmisartan,
   losartan,
   valsartan,
   irbesartan,
-} = require('./hypertension-medication.smiles');
+} from './hypertension-medication.smiles.js';
 
 // Reference data sources:
 // - nmrshiftdb2 HOSE code prediction (same engine as our database)

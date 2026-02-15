@@ -1,20 +1,14 @@
+import OCL from 'openchemlib';
+
 /**
  * SMILES Parser
  *
  * Parses a SMILES string into a molecule graph representation.
  *
  * @param {string} smiles - SMILES string
- * @returns {{ atoms: Array<{element: string, charge: number, hydrogens: number, aromatic: boolean}>, bonds: Array<{from: number, to: number, order: number}> }}
+ * @returns {OCL.Molecule} openchemlib Molecule object
  */
-function parseSMILES(smiles) {
-  // TODO: Implement SMILES parser
-  // This is a substantial piece of work. Options:
-  // 1. Use openchemlib-js (preferred - battle-tested)
-  // 2. Write our own (educational but error-prone)
-  // 3. Use smiles-drawer or other npm package
-  //
-  // For now, throw so tests fail clearly at this layer.
-  throw new Error('parseSMILES: Not implemented yet');
+export function parseSMILES(smiles) {
+  // Use openchemlib's built-in SMILES parser
+  return OCL.Molecule.fromSmiles(smiles);
 }
-
-module.exports = { parseSMILES };

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "bun test"
   },
   "repository": {
     "type": "git",
@@ -12,16 +12,13 @@
   "keywords": [],
   "author": "",
   "license": "Apache-2.0",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/Ghost---Shadow/vamos-hose/issues"
   },
   "homepage": "https://github.com/Ghost---Shadow/vamos-hose#readme",
   "description": "",
-  "devDependencies": {
-    "@babel/core": "^7.29.0",
-    "@babel/preset-env": "^7.29.0",
-    "babel-jest": "^30.2.0",
-    "jest": "^30.2.0"
+  "dependencies": {
+    "openchemlib": "^8.13.0"
   }
 }
