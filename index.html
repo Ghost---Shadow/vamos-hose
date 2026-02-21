@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>vamos-hose: 13C NMR Predictor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        header {
+            background: #2d2d30;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #3e3e42;
+        }
+        h1 { font-size: 1.5rem; color: #fff; }
+        .subtitle { font-size: 0.9rem; color: #858585; margin-top: 0.25rem; }
+        .container { display: flex; flex: 1; overflow: hidden; }
+        .panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .panel-header {
+            background: #2d2d30; padding: 0.75rem 1rem;
+            border-bottom: 1px solid #3e3e42; font-weight: 600;
+            font-size: 0.9rem; color: #ccc;
+        }
+        .input-panel { border-right: 1px solid #3e3e42; max-width: 400px; }
+        .input-content { padding: 1rem; overflow-y: auto; flex: 1; }
+        label { display: block; margin-bottom: 0.25rem; color: #9cdcfe; font-size: 0.9rem; }
+        input[type="text"] {
+            width: 100%; padding: 0.5rem; background: #3c3c3c; color: #d4d4d4;
+            border: 1px solid #3e3e42; border-radius: 3px; font-family: 'Consolas', monospace;
+            font-size: 1rem;
+        }
+        input[type="text"]:focus { outline: none; border-color: #007acc; }
+        .examples { margin-top: 1rem; }
+        .examples h3 { color: #4ec9b0; font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .example-btn {
+            display: block; width: 100%; text-align: left;
+            background: #252526; border: 1px solid #3e3e42; border-radius: 3px;
+            color: #ce9178; padding: 0.5rem 0.75rem; margin-bottom: 0.5rem;
+            cursor: pointer; font-size: 0.85rem; font-family: 'Consolas', monospace;
+        }
+        .example-btn:hover { background: #2a2d2e; border-color: #007acc; }
+        .example-btn .name { color: #dcdcaa; display: block; font-family: 'Segoe UI', sans-serif; margin-bottom: 0.15rem; }
+        .output-content { flex: 1; overflow-y: auto; padding: 1rem; }
+        .spectrum-container {
+            background: #fff; border: 1px solid #3e3e42; border-radius: 4px;
+            padding: 0.5rem; margin-bottom: 1rem;
+        }
+        canvas { width: 100%; height: auto; display: block; }
+        .shift-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .shift-table th {
+            text-align: left; padding: 0.5rem; border-bottom: 2px solid #3e3e42;
+            color: #4ec9b0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .shift-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #3e3e42; }
+        .shift-table tr:hover td { background: #2a2d2e; }
+        .shift-value { color: #b5cea8; font-family: 'Consolas', monospace; }
+        .hose-code { color: #ce9178; font-family: 'Consolas', monospace; font-size: 0.8rem; }
+        .status { padding: 0.75rem 1rem; background: #2d2d30; border-top: 1px solid #3e3e42; font-size: 0.85rem; color: #858585; }
+        .status.loading { color: #dcdcaa; }
+        .status.success { color: #4ec9b0; }
+        .status.error { color: #f48771; }
+        .molecule-viewer {
+            background: #fff; border: 1px solid #3e3e42; border-radius: 4px;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 200px; margin-bottom: 1rem;
+        }
+        .summary {
+            background: #252526; border: 1px solid #3e3e42; border-radius: 4px;
+            padding: 0.75rem 1rem; margin-bottom: 1rem;
+        }
+        .summary-row { display: flex; justify-content: space-between; padding: 0.25rem 0; }
+        .summary-label { color: #9cdcfe; }
+        .summary-value { color: #b5cea8; font-family: 'Consolas', monospace; }
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .input-panel { max-width: none; border-right: none; border-bottom: 1px solid #3e3e42; max-height: 40vh; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>vamos-hose</h1>
+        <p class="subtitle">Predict 13C NMR chemical shifts from SMILES using HOSE codes and nmrshiftdb2</p>
+    </header>
+    <div class="container">
+        <div class="panel input-panel">
+            <div class="panel-header">Input</div>
+            <div class="input-content">
+                <label for="smiles-input">SMILES</label>
+                <input type="text" id="smiles-input" placeholder="Enter SMILES string..." value="CC(=O)Oc1ccccc1C(=O)O">
+                <div class="examples">
+                    <h3>Examples</h3>
+                    <button class="example-btn" data-smiles="CC(=O)Oc1ccccc1C(=O)O"><span class="name">Aspirin</span>CC(=O)Oc1ccccc1C(=O)O</button>
+                    <button class="example-btn" data-smiles="CC(C)Cc1ccc(cc1)C(C)C(=O)O"><span class="name">Ibuprofen</span>CC(C)Cc1ccc(cc1)C(C)C(=O)O</button>
+                    <button class="example-btn" data-smiles="CC(=O)Nc1ccc(O)cc1"><span class="name">Acetaminophen</span>CC(=O)Nc1ccc(O)cc1</button>
+                    <button class="example-btn" data-smiles="CN1CCC23C4C1CC5=C2C(=C(C=C5)O)OC3C(C=C4)O"><span class="name">Morphine</span>CN1CCC23C4C1CC5=C2C(=C(C=C5)O)OC3C(C=C4)O</button>
+                    <button class="example-btn" data-smiles="CCC(=O)N(C1CCN(CC1)CCC2=CC=CC=C2)C3=CC=CC=C3"><span class="name">Fentanyl</span>CCC(=O)N(C1CCN(CC1)CCC2=CC=CC=C2)C3=CC=CC=C3</button>
+                    <button class="example-btn" data-smiles="CC(C)OC(=O)C(C)(C)Oc1ccc(cc1)C(=O)c2ccc(Cl)cc2"><span class="name">Fenofibrate</span>CC(C)OC(=O)C(C)(C)Oc1ccc(cc1)C(=O)c2ccc(Cl)cc2</button>
+                    <button class="example-btn" data-smiles="CC12CCC(=O)C=C1CCC1C2C(O)CC2(C)C(C(=O)CO)CCC12"><span class="name">Cortisone</span>CC12CCC(=O)C=C1CCC1C2C(O)CC2(C)C(C(=O)CO)CCC12</button>
+                    <button class="example-btn" data-smiles="CCN(CC)CC(=O)NC1=C(C)C=CC=C1C"><span class="name">Lidocaine</span>CCN(CC)CC(=O)NC1=C(C)C=CC=C1C</button>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">13C NMR Prediction</div>
+            <div class="output-content" id="output">
+                <div class="summary"><p style="color:#858585; text-align:center;">Enter a SMILES string or click an example to predict 13C NMR shifts</p></div>
+            </div>
+            <div class="status" id="status">Ready</div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
+    <script type="module">
+        import { lookupNmrShifts } from 'https://unpkg.com/vamos-hose@latest/index.js';
+
+        let smilesDrawer;
+        function initSmilesDrawer() {
+            if (typeof SmilesDrawer !== 'undefined' && !smilesDrawer) {
+                smilesDrawer = new SmilesDrawer.SvgDrawer({ width: 400, height: 200, bondThickness: 2 });
+            }
+        }
+        window.addEventListener('load', initSmilesDrawer);
+
+        const input = document.getElementById('smiles-input');
+        const output = document.getElementById('output');
+        const statusEl = document.getElementById('status');
+
+        function setStatus(text, cls) {
+            statusEl.textContent = text;
+            statusEl.className = 'status ' + (cls || '');
+        }
+
+        function drawLorentzian(canvas, shifts, options = {}) {
+            const { range = [0, 220], lineWidth = 0.5 } = options;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const [lo, hi] = range;
+            const ppmPerPx = (hi - lo) / w;
+            const gamma = lineWidth;
+
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, w, h);
+
+            // Build intensity curve
+            const curve = new Float64Array(w);
+            for (const s of shifts) {
+                for (let px = 0; px < w; px++) {
+                    const ppm = hi - px * ppmPerPx; // NMR convention: high ppm left
+                    const diff = ppm - s.shift;
+                    curve[px] += (gamma * gamma) / (diff * diff + gamma * gamma);
+                }
+            }
+            const maxI = Math.max(...curve) || 1;
+
+            // Fill area
+            const margin = 30;
+            const plotH = h - margin - 10;
+            ctx.fillStyle = 'rgba(0, 100, 200, 0.15)';
+            ctx.beginPath();
+            ctx.moveTo(0, margin + plotH);
+            for (let px = 0; px < w; px++) {
+                const y = margin + plotH * (1 - curve[px] / maxI);
+                ctx.lineTo(px, y);
+            }
+            ctx.lineTo(w, margin + plotH);
+            ctx.closePath();
+            ctx.fill();
+
+            // Line
+            ctx.strokeStyle = '#0064c8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (let px = 0; px < w; px++) {
+                const y = margin + plotH * (1 - curve[px] / maxI);
+                if (px === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+            }
+            ctx.stroke();
+
+            // X-axis
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, margin + plotH);
+            ctx.lineTo(w, margin + plotH);
+            ctx.stroke();
+
+            // Tick marks
+            ctx.fillStyle = '#333';
+            ctx.font = '11px Consolas, monospace';
+            ctx.textAlign = 'center';
+            const step = hi - lo <= 50 ? 5 : hi - lo <= 100 ? 10 : 20;
+            for (let ppm = Math.ceil(lo / step) * step; ppm <= hi; ppm += step) {
+                const px = w * (hi - ppm) / (hi - lo);
+                ctx.beginPath();
+                ctx.moveTo(px, margin + plotH);
+                ctx.lineTo(px, margin + plotH + 5);
+                ctx.stroke();
+                ctx.fillText(ppm + '', px, margin + plotH + 16);
+            }
+
+            // Label
+            ctx.fillStyle = '#333';
+            ctx.font = '12px Segoe UI, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Chemical Shift (ppm)', w / 2, h - 2);
+
+            // Title
+            ctx.font = 'bold 12px Segoe UI, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('Predicted 13C NMR Spectrum', 8, 16);
+        }
+
+        async function predict(smiles) {
+            if (!smiles.trim()) {
+                output.innerHTML = '<div class="summary"><p style="color:#858585; text-align:center;">Enter a SMILES string</p></div>';
+                setStatus('Ready');
+                return;
+            }
+
+            setStatus('Predicting...', 'loading');
+
+            try {
+                const shifts = await lookupNmrShifts(smiles, { nucleus: '13C' });
+
+                if (!shifts || shifts.length === 0) {
+                    output.innerHTML = '<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">No carbon shifts predicted. Check if the SMILES is valid and contains carbon atoms.</p></div>';
+                    setStatus('No results', 'error');
+                    return;
+                }
+
+                const sorted = [...shifts].sort((a, b) => b.shift - a.shift);
+                const minShift = Math.min(...shifts.map(s => s.shift));
+                const maxShift = Math.max(...shifts.map(s => s.shift));
+
+                let html = '';
+
+                // Molecule viewer
+                html += '<div class="molecule-viewer"><svg id="mol-svg" width="400" height="200"></svg></div>';
+
+                // Summary
+                html += '<div class="summary">';
+                html += `<div class="summary-row"><span class="summary-label">Carbon atoms</span><span class="summary-value">${shifts.length}</span></div>`;
+                html += `<div class="summary-row"><span class="summary-label">Shift range</span><span class="summary-value">${minShift.toFixed(1)} - ${maxShift.toFixed(1)} ppm</span></div>`;
+                html += '</div>';
+
+                // Spectrum canvas
+                html += '<div class="spectrum-container"><canvas id="spectrum" width="700" height="200"></canvas></div>';
+
+                // Shift table
+                html += '<table class="shift-table"><thead><tr><th>#</th><th>Shift (ppm)</th><th>HOSE Code</th></tr></thead><tbody>';
+                sorted.forEach((s, i) => {
+                    html += `<tr><td>${i + 1}</td><td class="shift-value">${s.shift.toFixed(1)}</td><td class="hose-code">${s.hose || ''}</td></tr>`;
+                });
+                html += '</tbody></table>';
+
+                output.innerHTML = html;
+
+                // Draw spectrum
+                const canvas = document.getElementById('spectrum');
+                if (canvas) drawLorentzian(canvas, shifts);
+
+                // Draw molecule
+                initSmilesDrawer();
+                if (smilesDrawer) {
+                    setTimeout(() => {
+                        try {
+                            SmilesDrawer.parse(smiles, tree => {
+                                smilesDrawer.draw(tree, 'mol-svg', 'light', false);
+                            }, err => {
+                                const viewer = document.querySelector('.molecule-viewer');
+                                if (viewer) viewer.innerHTML = `<p style="color:#f48771;">Cannot render: ${err}</p>`;
+                            });
+                        } catch (e) {}
+                    }, 10);
+                }
+
+                setStatus(`${shifts.length} carbon shifts predicted`, 'success');
+            } catch (err) {
+                output.innerHTML = `<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">Error: ${err.message}</p></div>`;
+                setStatus('Error', 'error');
+            }
+        }
+
+        // Debounce input
+        let timer;
+        input.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => predict(input.value), 500);
+        });
+
+        // Example buttons
+        document.querySelectorAll('.example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                input.value = btn.dataset.smiles;
+                predict(input.value);
+            });
+        });
+
+        // Initial prediction
+        predict(input.value);
+    </script>
+</body>
+</html>
