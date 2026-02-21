@@ -1,11 +1,10 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const NUM_CHUNKS = 256;
-const CHUNKS_DIR = path.join(__dirname, '..', 'chunks');
+
+/**
+ * Resolve the base URL for chunks/ relative to this module.
+ * Works in both Node.js (file:// URLs) and browsers (http:// URLs).
+ */
+const CHUNKS_BASE = new URL('../chunks/', import.meta.url).href;
 
 /** Cache of loaded chunks: index -> chunk data object */
 const _chunkCache = new Map();
@@ -32,6 +31,9 @@ function chunkIndex(hoseCode) {
  * Load a single chunk by index via dynamic import().
  * Cached after first load.
  *
+ * Works in Node.js (file:// URLs) and browsers (http:// URLs)
+ * as long as the chunks/ directory is served alongside this module.
+ *
  * @param {number} idx - chunk index (0-255)
  * @returns {Promise<object>} the chunk's HOSE-to-entry mapping
  */
@@ -39,10 +41,8 @@ async function loadChunk(idx) {
   if (_chunkCache.has(idx)) return _chunkCache.get(idx);
 
   const chunkName = `chunk_${String(idx).padStart(3, '0')}.js`;
-  const chunkPath = path.join(CHUNKS_DIR, chunkName);
+  const chunkUrl = CHUNKS_BASE + chunkName;
 
-  // Use file:// URL for Windows compatibility with dynamic import
-  const chunkUrl = 'file:///' + chunkPath.replace(/\\/g, '/');
   const mod = await import(chunkUrl);
   const data = mod.default;
   _chunkCache.set(idx, data);

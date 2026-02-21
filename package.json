@@ -1,7 +1,19 @@
 {
   "name": "vamos-hose",
   "version": "1.0.0",
+  "description": "Predict 13C NMR chemical shifts from SMILES using HOSE codes and nmrshiftdb2",
   "main": "index.js",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./chunks/*": "./chunks/*"
+  },
+  "files": [
+    "index.js",
+    "src/",
+    "chunks/",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "bun test"
   },
@@ -9,15 +21,23 @@
     "type": "git",
     "url": "git+https://github.com/Ghost---Shadow/vamos-hose.git"
   },
-  "keywords": [],
+  "keywords": [
+    "nmr",
+    "chemistry",
+    "hose-code",
+    "smiles",
+    "chemical-shift",
+    "13c-nmr",
+    "spectroscopy",
+    "nmrshiftdb2",
+    "drug-discovery"
+  ],
   "author": "",
   "license": "AGPL-3.0-or-later",
-  "type": "module",
   "bugs": {
     "url": "https://github.com/Ghost---Shadow/vamos-hose/issues"
   },
   "homepage": "https://github.com/Ghost---Shadow/vamos-hose#readme",
-  "description": "",
   "dependencies": {
     "openchemlib": "^9.20.0"
   }
