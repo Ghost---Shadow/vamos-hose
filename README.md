@@ -75,6 +75,19 @@ npm install
 npm test
 ```
 
+## Acknowledgments
+
+This project builds on the work of several open-source projects and academic publications:
+
+- **[nmrshiftdb2](https://nmrshiftdb.nmr.uni-koeln.de/)** — NMR chemical shift database (Stefan Kuhn, Christoph Steinbeck et al.). The HOSE code generator in `src/hose-generator.js` is a JavaScript port of the [ExtendedHOSECodeGenerator](https://sourceforge.net/p/nmrshiftdb2/code/HEAD/tree/trunk/nmrshiftdb2/src/java/org/openscience/nmrshiftdb/util/ExtendedHOSECodeGenerator.java) (AGPL v3).
+- **[CDK (Chemistry Development Kit)](https://cdk.github.io/)** — The canonical labeling algorithm is ported from CDK's [CanonicalLabeler](https://github.com/cdk/cdk/blob/main/base/standard/src/main/java/org/openscience/cdk/graph/invariant/CanonicalLabeler.java) (Oliver Horlacher, LGPL 2.1), which implements the Weininger algorithm (D. Weininger et al., *J. Chem. Inf. Comput. Sci.*, 1989, 29, 97-101).
+- **[openchemlib-js](https://github.com/cheminfo/openchemlib-js)** — SMILES parsing and molecule representation (BSD-3-Clause).
+- **W. Bremser** — Original HOSE code concept (*Analytica Chimica Acta*, 1978, 103, 355-365).
+
 ## License
 
-Apache-2.0
+AGPL-3.0-or-later
+
+The HOSE code generator (`src/hose-generator.js`) is a JavaScript port of nmrshiftdb2's [ExtendedHOSECodeGenerator](https://sourceforge.net/p/nmrshiftdb2/code/HEAD/tree/trunk/nmrshiftdb2/src/java/org/openscience/nmrshiftdb/util/ExtendedHOSECodeGenerator.java), which is licensed under AGPL v3. It also ports CDK's [CanonicalLabeler](https://github.com/cdk/cdk/blob/main/base/standard/src/main/java/org/openscience/cdk/graph/invariant/CanonicalLabeler.java), licensed under LGPL 2.1. Since the algorithms were directly ported (not linked as a library), the derived code is a derivative work and the AGPL v3 copyleft applies to the entire project. See `LICENSE` and the `src/hose-generator.js` file header for details.
+
+Note: The AGPL applies to the **software** only. Chemical shifts, NMR predictions, drug candidates, or any other scientific results produced by running this library are not covered by the AGPL and remain the property of the user.

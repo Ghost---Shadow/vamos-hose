@@ -4,12 +4,29 @@
  * Generates text-format HOSE codes (Bremser notation) from an openchemlib
  * Molecule object. Compatible with nmrshiftdb2 database format.
  *
- * Implements the CDK ExtendedHOSECodeGenerator two-pass algorithm:
- * Pass 1: BFS tree building - only skip parent atom, no visited tracking
- * Pass 2: Score calculation + code generation - detect ring closures via visited tracking
+ * This file contains code derived from the following open-source projects:
  *
- * Reference: W. Bremser, "HOSE - A Novel Substructure Code",
- *            Analytica Chimica Acta, 1978, 103, 355-365.
+ * 1. CDK (Chemistry Development Kit) — ExtendedHOSECodeGenerator
+ *    Original authors: Stefan Kuhn, Christoph Steinbeck
+ *    Source: https://sourceforge.net/p/nmrshiftdb2/code/HEAD/tree/trunk/nmrshiftdb2/src/java/org/openscience/nmrshiftdb/util/ExtendedHOSECodeGenerator.java
+ *    License: AGPL v3 (https://www.gnu.org/licenses/agpl-3.0.html)
+ *    Ported: Two-pass BFS tree + scoring/code-generation algorithm,
+ *            ring closure detection, charge code generation, element ranking
+ *
+ * 2. CDK (Chemistry Development Kit) — CanonicalLabeler
+ *    Original author: Oliver Horlacher
+ *    Source: https://github.com/cdk/cdk/blob/main/base/standard/src/main/java/org/openscience/cdk/graph/invariant/CanonicalLabeler.java
+ *    License: LGPL 2.1 (https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html)
+ *    Algorithm: D. Weininger et al., "SMILES. 2. Algorithm for Generation
+ *               of Unique SMILES Notation", J. Chem. Inf. Comput. Sci., 1989, 29, 97-101.
+ *    Ported: computeCanonicalLabels() — invariant partitioning with prime product refinement
+ *
+ * 3. HOSE code concept:
+ *    W. Bremser, "HOSE - A Novel Substructure Code",
+ *    Analytica Chimica Acta, 1978, 103, 355-365.
+ *
+ * Molecule parsing provided by openchemlib (BSD-3-Clause):
+ *    https://github.com/cheminfo/openchemlib-js
  */
 
 // Bremser element substitutions
@@ -34,6 +51,9 @@ const BOND_SYMBOLS = ['<', '', '=', '%', '*'];
 // Sphere delimiters
 const SPHERE_DELIMITERS = ['(', '/', '/', ')', '/', '/', '/', '/', '/', '/'];
 
+// Cache canonical labels per molecule to avoid recomputation
+let _canonCache = { mol: null, labels: null };
+
 /**
  * Generate a text-format HOSE code for a given atom in a molecule.
  */
@@ -42,9 +62,18 @@ export function generateHoseCode(mol, atomIndex, options = {}) {
 
   mol.ensureHelperArrays(mol.constructor.cHelperSymmetrySimple || 63);
 
+  // Compute CDK-style canonical labels (cached per molecule)
+  let canonLabels;
+  if (_canonCache.mol === mol) {
+    canonLabels = _canonCache.labels;
+  } else {
+    canonLabels = computeCanonicalLabels(mol);
+    _canonCache = { mol, labels: canonLabels };
+  }
+
   // PASS 1: Build BFS tree without visited tracking (CDK approach)
   // Only skip the parent atom for each node
-  const spheres = buildBfsTree(mol, atomIndex, maxSpheres);
+  const spheres = buildBfsTree(mol, atomIndex, maxSpheres, canonLabels);
 
   // PASS 2: Score, detect ring closures, sort, and generate code
   return createCode(mol, spheres, maxSpheres, atomIndex);
@@ -56,7 +85,7 @@ export function generateHoseCode(mol, atomIndex, options = {}) {
  * Implicit H atoms are included as leaf nodes.
  * Nodes are sorted by canonical label (symmetry rank) at each level.
  */
-function buildBfsTree(mol, centerIdx, maxSpheres) {
+function buildBfsTree(mol, centerIdx, maxSpheres, canonLabels) {
   const spheres = [];
 
   // Sphere 0: all neighbors of center atom
@@ -76,7 +105,7 @@ function buildBfsTree(mol, centerIdx, maxSpheres) {
     sphere0.push(makeNode(-1, 'H', 1, null, centerIdx, 1));
   }
   // Sort by canonical label (CDK TreeNodeComparator sorts by canonical label ascending)
-  sortByCanonicalLabel(sphere0, mol);
+  sortByCanonicalLabel(sphere0, canonLabels);
   spheres.push(sphere0);
 
   // Subsequent spheres
@@ -120,7 +149,7 @@ function buildBfsTree(mol, centerIdx, maxSpheres) {
     }
 
     // Sort by canonical label
-    sortByCanonicalLabel(nextSphereNodes, mol);
+    sortByCanonicalLabel(nextSphereNodes, canonLabels);
     spheres.push(nextSphereNodes);
   }
 
@@ -260,10 +289,10 @@ function generateCodeString(mol, spheres, maxSpheres, centerIdx) {
   for (const node of s0) {
     const bondSym = getBondSymbol(node.bondType);
     if (node.atomIdx >= 0 && visited.has(node.atomIdx)) {
-      code += bondSym + '&';
+      code += bondSym + '&' + chargeCode(mol, node.atomIdx);
       node.stopper = true;
     } else if (node.atomIdx >= 0) {
-      code += bondSym + bremserElement(node.element);
+      code += bondSym + bremserElement(node.element) + chargeCode(mol, node.atomIdx);
     } else if (node.element === 'H') {
       code += bondSym + 'H';
     } else if (node.element === ',') {
@@ -301,10 +330,10 @@ function generateCodeString(mol, spheres, maxSpheres, centerIdx) {
 
         if (node.atomIdx >= 0 && visited.has(node.atomIdx)) {
           // Ring closure
-          code += bondSym + '&';
+          code += bondSym + '&' + chargeCode(mol, node.atomIdx);
           node.stopper = true;
         } else if (node.atomIdx >= 0) {
-          code += bondSym + bremserElement(node.element);
+          code += bondSym + bremserElement(node.element) + chargeCode(mol, node.atomIdx);
         } else if (node.element === 'H') {
           code += bondSym + 'H';
         } else if (node.element === ',') {
@@ -375,13 +404,13 @@ function padScore(score) {
   return s;
 }
 
-function sortByCanonicalLabel(nodes, mol) {
+function sortByCanonicalLabel(nodes, canonLabels) {
   nodes.sort((a, b) => {
     if (a.atomIdx < 0 && b.atomIdx < 0) return 0;
     if (a.atomIdx < 0 || a.element === ',') return 0;
     if (b.atomIdx < 0 || b.element === ',') return 0;
-    const rankA = mol.getSymmetryRank(a.atomIdx);
-    const rankB = mol.getSymmetryRank(b.atomIdx);
+    const rankA = canonLabels[a.atomIdx];
+    const rankB = canonLabels[b.atomIdx];
     if (rankA < rankB) return -1;
     if (rankA > rankB) return 1;
     return 0;
@@ -409,6 +438,144 @@ function sortNodesByStringscore(sphere) {
 
 function bremserElement(element) {
   return BREMSER[element] || element;
+}
+
+/**
+ * CDK createChargeCode: append charge suffix after element symbol.
+ * +1 -> "+", -1 -> "-", +2 -> "'+2'", -2 -> "'-2'", etc.
+ */
+function chargeCode(mol, atomIdx) {
+  if (atomIdx < 0) return '';
+  const charge = mol.getAtomCharge(atomIdx);
+  if (charge === 0) return '';
+  if (Math.abs(charge) === 1) return charge < 0 ? '-' : '+';
+  return "'" + (charge > 0 ? '+' : '') + charge + "'";
+}
+
+// First 200 prime numbers for CDK canonical labeling
+const PRIMES = (() => {
+  const p = [];
+  let c = 2;
+  while (p.length < 200) {
+    let ok = true;
+    for (let i = 0; i < p.length && p[i] * p[i] <= c; i++) {
+      if (c % p[i] === 0) { ok = false; break; }
+    }
+    if (ok) p.push(c);
+    c++;
+  }
+  return p;
+})();
+
+const ATOMIC_NUM = {
+  H: 1, He: 2, Li: 3, Be: 4, B: 5, C: 6, N: 7, O: 8, F: 9,
+  Na: 11, Mg: 12, Al: 13, Si: 14, P: 15, S: 16, Cl: 17,
+  K: 19, Ca: 20, Fe: 26, Co: 27, Ni: 28, Cu: 29, Zn: 30,
+  As: 33, Se: 34, Br: 35, I: 53, Ge: 32, Sn: 50, Sb: 51, Te: 52,
+};
+
+/**
+ * CDK CanonicalLabeler (Weininger WEI89 algorithm).
+ * Produces deterministic canonical labels that break all symmetry ties.
+ * Returns an array indexed by atom index with integer labels (1..N).
+ */
+function computeCanonicalLabels(mol) {
+  const n = mol.getAllAtoms();
+  if (n === 0) return [];
+
+  // Step 1: Initial invariant (same as CDK createInvarLabel)
+  const pairs = [];
+  for (let i = 0; i < n; i++) {
+    const conn = mol.getConnAtoms(i);
+    const implH = mol.getImplicitHydrogens(i);
+    const totalConn = conn + implH;
+    const atomNum = ATOMIC_NUM[mol.getAtomLabel(i)] || 0;
+    const charge = mol.getAtomCharge(i);
+    const signCharge = charge < 0 ? 1 : 0;
+    const absCharge = Math.abs(charge);
+    const inv = parseInt(`${totalConn}${conn}${atomNum}${signCharge}${absCharge}${implH}`);
+    pairs.push({ idx: i, curr: inv, last: 0, prime: 2 });
+  }
+
+  // Index map for O(1) neighbor lookup
+  const idxMap = new Array(n);
+  for (let i = 0; i < n; i++) idxMap[i] = pairs[i];
+
+  canonSortAndRank(pairs);
+
+  // Iterate refinement
+  for (let iter = 0; iter < 100; iter++) {
+    // Prime product of neighbors
+    for (const p of pairs) {
+      let product = 1;
+      for (let j = 0; j < mol.getConnAtoms(p.idx); j++) {
+        const ni = mol.getConnAtom(p.idx, j);
+        product *= idxMap[ni].prime;
+      }
+      p.last = p.curr;
+      p.curr = product;
+    }
+
+    canonSortAndRank(pairs);
+
+    // Check invariant partition
+    if (canonIsInvPart(pairs)) {
+      if (pairs[pairs.length - 1].curr < pairs.length) {
+        canonBreakTies(pairs);
+      } else {
+        break;
+      }
+    }
+  }
+
+  const labels = new Array(n);
+  for (const p of pairs) labels[p.idx] = p.curr;
+  return labels;
+}
+
+function canonSortAndRank(pairs) {
+  // Sort by (last, curr) ascending — CDK sorts by curr first, then by last (stable sort)
+  pairs.sort((a, b) => a.curr - b.curr);
+  pairs.sort((a, b) => a.last - b.last);
+
+  // Rank
+  let num = 1;
+  const temp = new Array(pairs.length);
+  for (let i = 0; i < pairs.length; i++) {
+    if (i > 0 && (pairs[i].curr !== pairs[i - 1].curr || pairs[i].last !== pairs[i - 1].last)) {
+      num++;
+    }
+    temp[i] = num;
+  }
+  for (let i = 0; i < pairs.length; i++) {
+    pairs[i].curr = temp[i];
+    pairs[i].prime = PRIMES[temp[i] - 1] || 2;
+  }
+}
+
+function canonIsInvPart(pairs) {
+  if (pairs[pairs.length - 1].curr === pairs.length) return true;
+  for (const p of pairs) {
+    if (p.curr !== p.last) return false;
+  }
+  return true;
+}
+
+function canonBreakTies(pairs) {
+  let tie = -1;
+  let found = false;
+  for (let i = 0; i < pairs.length; i++) {
+    pairs[i].curr = pairs[i].curr * 2;
+    pairs[i].prime = PRIMES[pairs[i].curr - 1] || 2;
+    if (i > 0 && !found && pairs[i].curr === pairs[i - 1].curr) {
+      tie = i - 1;
+      found = true;
+    }
+  }
+  if (tie >= 0) {
+    pairs[tie].curr = pairs[tie].curr - 1;
+    pairs[tie].prime = PRIMES[pairs[tie].curr - 1] || 2;
+  }
 }
 
 function atomicMass(element) {
