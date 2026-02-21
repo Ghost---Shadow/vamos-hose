@@ -59,7 +59,7 @@
             background: #fff; border: 1px solid #3e3e42; border-radius: 4px;
             padding: 0.5rem; margin-bottom: 1rem;
         }
-        canvas { width: 100%; height: auto; display: block; }
+        .spectrum-container svg { width: 100%; height: auto; display: block; }
         .shift-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         .shift-table th {
             text-align: left; padding: 0.5rem; border-bottom: 2px solid #3e3e42;
@@ -145,85 +145,64 @@
             statusEl.className = 'status ' + (cls || '');
         }
 
-        function drawLorentzian(canvas, shifts, options = {}) {
+        function drawLorentzianSVG(container, shifts, options = {}) {
             const { range = [0, 220], lineWidth = 0.5 } = options;
-            const ctx = canvas.getContext('2d');
-            const w = canvas.width;
-            const h = canvas.height;
+            const svgW = 800;
+            const svgH = 280;
+            const marginTop = 32;
+            const marginBottom = 52;
+            const marginLeft = 10;
+            const marginRight = 10;
+            const plotW = svgW - marginLeft - marginRight;
+            const plotH = svgH - marginTop - marginBottom;
             const [lo, hi] = range;
-            const ppmPerPx = (hi - lo) / w;
             const gamma = lineWidth;
 
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, w, h);
-
-            // Build intensity curve
-            const curve = new Float64Array(w);
+            // Build intensity curve at high resolution
+            const numPts = plotW * 2;
+            const curve = new Float64Array(numPts);
             for (const s of shifts) {
-                for (let px = 0; px < w; px++) {
-                    const ppm = hi - px * ppmPerPx; // NMR convention: high ppm left
+                for (let i = 0; i < numPts; i++) {
+                    const ppm = hi - (i / numPts) * (hi - lo);
                     const diff = ppm - s.shift;
-                    curve[px] += (gamma * gamma) / (diff * diff + gamma * gamma);
+                    curve[i] += (gamma * gamma) / (diff * diff + gamma * gamma);
                 }
             }
             const maxI = Math.max(...curve) || 1;
 
-            // Fill area
-            const margin = 30;
-            const plotH = h - margin - 10;
-            ctx.fillStyle = 'rgba(0, 100, 200, 0.15)';
-            ctx.beginPath();
-            ctx.moveTo(0, margin + plotH);
-            for (let px = 0; px < w; px++) {
-                const y = margin + plotH * (1 - curve[px] / maxI);
-                ctx.lineTo(px, y);
+            // Build path data for the curve
+            let linePath = '';
+            let areaPath = `M${marginLeft},${marginTop + plotH}`;
+            for (let i = 0; i < numPts; i++) {
+                const x = marginLeft + (i / numPts) * plotW;
+                const y = marginTop + plotH * (1 - curve[i] / maxI);
+                if (i === 0) { linePath += `M${x.toFixed(1)},${y.toFixed(1)}`; }
+                else { linePath += `L${x.toFixed(1)},${y.toFixed(1)}`; }
+                areaPath += `L${x.toFixed(1)},${y.toFixed(1)}`;
             }
-            ctx.lineTo(w, margin + plotH);
-            ctx.closePath();
-            ctx.fill();
+            areaPath += `L${marginLeft + plotW},${marginTop + plotH}Z`;
 
-            // Line
-            ctx.strokeStyle = '#0064c8';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            for (let px = 0; px < w; px++) {
-                const y = margin + plotH * (1 - curve[px] / maxI);
-                if (px === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
-            }
-            ctx.stroke();
-
-            // X-axis
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(0, margin + plotH);
-            ctx.lineTo(w, margin + plotH);
-            ctx.stroke();
-
-            // Tick marks
-            ctx.fillStyle = '#333';
-            ctx.font = '11px Consolas, monospace';
-            ctx.textAlign = 'center';
+            // Build tick marks
             const step = hi - lo <= 50 ? 5 : hi - lo <= 100 ? 10 : 20;
+            let ticksSVG = '';
             for (let ppm = Math.ceil(lo / step) * step; ppm <= hi; ppm += step) {
-                const px = w * (hi - ppm) / (hi - lo);
-                ctx.beginPath();
-                ctx.moveTo(px, margin + plotH);
-                ctx.lineTo(px, margin + plotH + 5);
-                ctx.stroke();
-                ctx.fillText(ppm + '', px, margin + plotH + 16);
+                const x = marginLeft + plotW * (hi - ppm) / (hi - lo);
+                const yBase = marginTop + plotH;
+                ticksSVG += `<line x1="${x}" y1="${yBase}" x2="${x}" y2="${yBase + 6}" stroke="#333" stroke-width="1"/>`;
+                ticksSVG += `<text x="${x}" y="${yBase + 20}" text-anchor="middle" fill="#333" font-family="Consolas, monospace" font-size="12">${ppm}</text>`;
             }
 
-            // Label
-            ctx.fillStyle = '#333';
-            ctx.font = '12px Segoe UI, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('Chemical Shift (ppm)', w / 2, h - 2);
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}">
+                <rect width="${svgW}" height="${svgH}" fill="#fff"/>
+                <text x="${marginLeft + 4}" y="20" font-family="Segoe UI, sans-serif" font-size="14" font-weight="bold" fill="#333">Predicted 13C NMR Spectrum</text>
+                <path d="${areaPath}" fill="rgba(0,100,200,0.15)"/>
+                <path d="${linePath}" fill="none" stroke="#0064c8" stroke-width="1.5"/>
+                <line x1="${marginLeft}" y1="${marginTop + plotH}" x2="${marginLeft + plotW}" y2="${marginTop + plotH}" stroke="#333" stroke-width="1"/>
+                ${ticksSVG}
+                <text x="${svgW / 2}" y="${svgH - 8}" text-anchor="middle" fill="#333" font-family="Segoe UI, sans-serif" font-size="13">Chemical Shift (ppm)</text>
+            </svg>`;
 
-            // Title
-            ctx.font = 'bold 12px Segoe UI, sans-serif';
-            ctx.textAlign = 'left';
-            ctx.fillText('Predicted 13C NMR Spectrum', 8, 16);
+            container.innerHTML = svg;
         }
 
         async function predict(smiles) {
@@ -259,8 +238,8 @@
                 html += `<div class="summary-row"><span class="summary-label">Shift range</span><span class="summary-value">${minShift.toFixed(1)} - ${maxShift.toFixed(1)} ppm</span></div>`;
                 html += '</div>';
 
-                // Spectrum canvas
-                html += '<div class="spectrum-container"><canvas id="spectrum" width="700" height="200"></canvas></div>';
+                // Spectrum (SVG)
+                html += '<div class="spectrum-container" id="spectrum-container"></div>';
 
                 // Shift table
                 html += '<table class="shift-table"><thead><tr><th>#</th><th>Shift (ppm)</th><th>HOSE Code</th></tr></thead><tbody>';
@@ -272,8 +251,8 @@
                 output.innerHTML = html;
 
                 // Draw spectrum
-                const canvas = document.getElementById('spectrum');
-                if (canvas) drawLorentzian(canvas, shifts);
+                const specContainer = document.getElementById('spectrum-container');
+                if (specContainer) drawLorentzianSVG(specContainer, shifts);
 
                 // Draw molecule
                 initSmilesDrawer();
