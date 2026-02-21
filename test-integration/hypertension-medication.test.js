@@ -45,8 +45,8 @@ describe('Hypertension Medications - 13C NMR Lookup', () => {
   describe('Losartan', () => {
     let result;
 
-    beforeAll(() => {
-      result = lookupNmrShifts(losartan, { nucleus: '13C' });
+    beforeAll(async () => {
+      result = await lookupNmrShifts(losartan, { nucleus: '13C' });
     });
 
     test('returns correct number of carbon environments', () => {
@@ -104,8 +104,8 @@ describe('Hypertension Medications - 13C NMR Lookup', () => {
   describe('Valsartan', () => {
     let result;
 
-    beforeAll(() => {
-      result = lookupNmrShifts(valsartan, { nucleus: '13C' });
+    beforeAll(async () => {
+      result = await lookupNmrShifts(valsartan, { nucleus: '13C' });
     });
 
     test('returns correct number of carbon environments', () => {
@@ -161,8 +161,8 @@ describe('Hypertension Medications - 13C NMR Lookup', () => {
   describe('Irbesartan', () => {
     let result;
 
-    beforeAll(() => {
-      result = lookupNmrShifts(irbesartan, { nucleus: '13C' });
+    beforeAll(async () => {
+      result = await lookupNmrShifts(irbesartan, { nucleus: '13C' });
     });
 
     test('returns correct number of carbon environments', () => {
@@ -213,8 +213,8 @@ describe('Hypertension Medications - 13C NMR Lookup', () => {
   describe('Telmisartan', () => {
     let result;
 
-    beforeAll(() => {
-      result = lookupNmrShifts(telmisartan, { nucleus: '13C' });
+    beforeAll(async () => {
+      result = await lookupNmrShifts(telmisartan, { nucleus: '13C' });
     });
 
     test('returns correct number of carbon environments', () => {
@@ -265,12 +265,12 @@ describe('Hypertension Medications - 13C NMR Lookup', () => {
   describe('Shared biphenyl-tetrazole pharmacophore', () => {
     let losartanResult, valsartanResult, irbesartanResult, telmisartanResult;
 
-    beforeAll(() => {
-      losartanResult = lookupNmrShifts(losartan, { nucleus: '13C' });
-      valsartanResult = lookupNmrShifts(valsartan, { nucleus: '13C' });
-      irbesartanResult = lookupNmrShifts(irbesartan, { nucleus: '13C' });
+    beforeAll(async () => {
+      losartanResult = await lookupNmrShifts(losartan, { nucleus: '13C' });
+      valsartanResult = await lookupNmrShifts(valsartan, { nucleus: '13C' });
+      irbesartanResult = await lookupNmrShifts(irbesartan, { nucleus: '13C' });
       // Telmisartan has COOH instead of tetrazole on the same biphenyl
-      telmisartanResult = lookupNmrShifts(telmisartan, { nucleus: '13C' });
+      telmisartanResult = await lookupNmrShifts(telmisartan, { nucleus: '13C' });
     });
 
     test('all ARBs with tetrazole show C5-tetrazole around 150-160 ppm', () => {

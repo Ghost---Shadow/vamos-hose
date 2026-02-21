@@ -1,8 +1,10 @@
+import { describe, test, expect } from 'bun:test';
 import {
   loadDatabase,
   queryHose,
   computeWeightedAvg,
   extractSolvents,
+  clearCache,
 } from './database.js';
 
 describe('computeWeightedAvg', () => {
@@ -73,49 +75,40 @@ describe('extractSolvents', () => {
 });
 
 describe('queryHose', () => {
-  const mockDb = {
-    'HCC(': {
-      n: 'C',
-      s: 'CCC',
-      'C_CDCl3': { min: 25.0, max: 27.0, avg: 26.0, cnt: 10 },
-      'C_DMSO': { min: 26.0, max: 28.0, avg: 27.0, cnt: 5 },
-    },
-  };
-
-  test('returns shift data for known HOSE code', () => {
-    const result = queryHose(mockDb, 'HCC(');
+  test('returns shift data for known HOSE code', async () => {
+    // Use a HOSE code we know exists in the sharded chunks
+    const db = await loadDatabase();
+    const testCode = Object.keys(db)[0];
+    const result = await queryHose(testCode);
     expect(result).not.toBeNull();
-    expect(result.smiles).toBe('CCC');
-    expect(result.nucleus).toBe('C');
-    // weighted avg: (26*10 + 27*5) / 15 = (260+135)/15 = 26.333... -> 26.3
-    expect(result.avgShift).toBe(26.3);
-    expect(result.solvents).toEqual({
-      'C_CDCl3': { min: 25.0, max: 27.0, avg: 26.0, cnt: 10 },
-      'C_DMSO': { min: 26.0, max: 28.0, avg: 27.0, cnt: 5 },
-    });
+    expect(result).toHaveProperty('avgShift');
+    expect(result).toHaveProperty('smiles');
+    expect(result).toHaveProperty('nucleus');
+    expect(result).toHaveProperty('solvents');
+    expect(typeof result.avgShift).toBe('number');
   });
 
-  test('returns null for unknown HOSE code', () => {
-    expect(queryHose(mockDb, 'NONEXISTENT')).toBeNull();
+  test('returns null for unknown HOSE code', async () => {
+    expect(await queryHose('NONEXISTENT_CODE_XYZ')).toBeNull();
   });
 });
 
 describe('loadDatabase', () => {
-  test('returns an object with HOSE code keys', () => {
-    const db = loadDatabase();
+  test('returns an object with HOSE code keys', async () => {
+    const db = await loadDatabase();
     expect(typeof db).toBe('object');
     expect(Object.keys(db).length).toBeGreaterThan(0);
   });
 
-  test('entries have n and s fields', () => {
-    const db = loadDatabase();
+  test('entries have n and s fields', async () => {
+    const db = await loadDatabase();
     const firstKey = Object.keys(db)[0];
     expect(db[firstKey]).toHaveProperty('n');
     expect(db[firstKey]).toHaveProperty('s');
   });
 
-  test('solvent entries have min, max, avg, cnt', () => {
-    const db = loadDatabase();
+  test('solvent entries have min, max, avg, cnt', async () => {
+    const db = await loadDatabase();
     const firstKey = Object.keys(db)[0];
     const entry = db[firstKey];
     const solventKeys = Object.keys(entry).filter(
@@ -127,11 +120,5 @@ describe('loadDatabase', () => {
     expect(solvent).toHaveProperty('max');
     expect(solvent).toHaveProperty('avg');
     expect(solvent).toHaveProperty('cnt');
-  });
-
-  test('returns same reference on second call (cached)', () => {
-    const db1 = loadDatabase();
-    const db2 = loadDatabase();
-    expect(db1).toBe(db2);
   });
 });

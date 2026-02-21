@@ -1,50 +1,70 @@
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let _cachedDb = null;
+const NUM_CHUNKS = 256;
+const CHUNKS_DIR = path.join(__dirname, '..', 'chunks');
 
-const DB_PATH = path.join(
-  __dirname,
-  '..',
-  'cleaning-scripts',
-  'hose_shift_lookup.json',
-);
+/** Cache of loaded chunks: index -> chunk data object */
+const _chunkCache = new Map();
 
 /**
- * Load the HOSE-keyed shift database.
- * Cached after first call.
- *
- * Database format:
- *   { hoseCode: { "n": nucleus, "s": smiles, solventName: { min, max, avg, cnt } } }
- *
- * @returns {object} the parsed database object
+ * Hash a string to a 32-bit integer (must match shard_database.mjs).
  */
-export function loadDatabase() {
-  if (_cachedDb) return _cachedDb;
-  const raw = fs.readFileSync(DB_PATH, 'utf-8');
-  _cachedDb = JSON.parse(raw);
-  return _cachedDb;
+function hashCode(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
 }
 
 /**
- * Query a single HOSE code against the database.
+ * Get the chunk index for a given HOSE code.
+ */
+function chunkIndex(hoseCode) {
+  return hashCode(hoseCode) % NUM_CHUNKS;
+}
+
+/**
+ * Load a single chunk by index via dynamic import().
+ * Cached after first load.
  *
+ * @param {number} idx - chunk index (0-255)
+ * @returns {Promise<object>} the chunk's HOSE-to-entry mapping
+ */
+async function loadChunk(idx) {
+  if (_chunkCache.has(idx)) return _chunkCache.get(idx);
+
+  const chunkName = `chunk_${String(idx).padStart(3, '0')}.js`;
+  const chunkPath = path.join(CHUNKS_DIR, chunkName);
+
+  // Use file:// URL for Windows compatibility with dynamic import
+  const chunkUrl = 'file:///' + chunkPath.replace(/\\/g, '/');
+  const mod = await import(chunkUrl);
+  const data = mod.default;
+  _chunkCache.set(idx, data);
+  return data;
+}
+
+/**
+ * Query a single HOSE code against the sharded database.
+ *
+ * Loads the required chunk on demand, then looks up the HOSE code.
  * Returns the best shift estimate by averaging across all solvents,
  * weighted by measurement count.
  *
- * @param {object} db - the loaded database
  * @param {string} hoseCode - HOSE code to look up
- * @returns {{ avgShift: number, smiles: string, solvents: object } | null}
+ * @returns {Promise<{ avgShift: number, smiles: string, nucleus: string, solvents: object } | null>}
  */
-export function queryHose(db, hoseCode) {
-  const entry = db[hoseCode];
+export async function queryHose(hoseCode) {
+  const idx = chunkIndex(hoseCode);
+  const chunk = await loadChunk(idx);
+  const entry = chunk[hoseCode];
   if (!entry) return null;
 
-  // Weighted average across all solvents
   const avgShift = computeWeightedAvg(entry);
 
   return {
@@ -53,6 +73,35 @@ export function queryHose(db, hoseCode) {
     nucleus: entry.n,
     solvents: extractSolvents(entry),
   };
+}
+
+/**
+ * Preload chunks for a batch of HOSE codes.
+ * Loads all needed chunks in parallel for better performance.
+ *
+ * @param {string[]} hoseCodes - array of HOSE codes
+ * @returns {Promise<void>}
+ */
+export async function preloadChunks(hoseCodes) {
+  const indices = new Set(hoseCodes.map(chunkIndex));
+  await Promise.all([...indices].map(loadChunk));
+}
+
+/**
+ * Load the entire database by loading all 256 chunks.
+ * Returns a merged object with all HOSE entries.
+ * Provided for backward compatibility with tests.
+ *
+ * @returns {Promise<object>} the full database as a single object
+ */
+export async function loadDatabase() {
+  const indices = Array.from({ length: NUM_CHUNKS }, (_, i) => i);
+  const chunks = await Promise.all(indices.map(loadChunk));
+  const merged = {};
+  for (const chunk of chunks) {
+    Object.assign(merged, chunk);
+  }
+  return merged;
 }
 
 /**
@@ -88,4 +137,11 @@ export function extractSolvents(entry) {
     solvents[key] = val;
   }
   return solvents;
+}
+
+/**
+ * Clear the chunk cache. Useful for testing.
+ */
+export function clearCache() {
+  _chunkCache.clear();
 }

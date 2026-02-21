@@ -47,11 +47,11 @@ describe('Test Database Utils', () => {
     }
   });
 
-  test('queryHose works with sample database', () => {
+  test('queryHose works with chunk-based database', async () => {
     const db = loadTestDatabase();
     const testCode = Object.keys(db)[0];
 
-    const result = queryHose(db, testCode);
+    const result = await queryHose(testCode);
     expect(result).not.toBeNull();
     expect(result).toHaveProperty('avgShift');
     expect(result).toHaveProperty('smiles');
