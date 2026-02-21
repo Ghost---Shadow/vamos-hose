@@ -65,9 +65,10 @@ const candidates = await estimateFromSpectra({
 - [x] Database code-splitting for lazy loading (256 hash-based chunks, ~0.8 MB each)
 - [x] Browser-compatible module (import.meta.url chunk resolution, npm package fields)
 
+- [x] Integration tests for all 10 drug categories (276 tests across 35+ molecules)
+
 ### To Do
 
-- [ ] Integration tests for remaining drug categories
 - [ ] npm publish
 
 ## Development
