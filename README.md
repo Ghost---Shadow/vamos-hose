@@ -15,7 +15,7 @@ The final product is a **pure JavaScript library** that runs entirely in the bro
 ```js
 import { lookupNmrShifts } from 'vamos-hose';
 
-const shifts = lookupNmrShifts('CCCCC1=NC(Cl)=C(CO)N1CC2=CC=C(C=C2)C3=CC=CC=C3C4=NNN=N4', {
+const shifts = await lookupNmrShifts('CCCCC1=NC(Cl)=C(CO)N1CC2=CC=C(C=C2)C3=CC=CC=C3C4=NNN=N4', {
   nucleus: '13C',
 });
 // Returns: [{ shift: 13.9, atom: 'C', hose: '...', smiles: '...' }, ...]
@@ -40,7 +40,7 @@ plotSpectra(canvas, shifts, {
 ```js
 import { estimateFromSpectra } from 'vamos-hose';
 
-const candidates = estimateFromSpectra({
+const candidates = await estimateFromSpectra({
   nucleus: '13C',
   peaks: [14.1, 22.7, 32.0, 127.5, 128.3, 130.6, 137.0, 174.1],
   tolerance: 2.0,     // ppm tolerance per peak
@@ -58,15 +58,17 @@ const candidates = estimateFromSpectra({
 - [x] Full database build -- 1,421,845 unique HOSE keys, 210 MB JSON
 - [x] Integration test suite for hypertension medications (losartan, valsartan, irbesartan, telmisartan)
 
+- [x] `lookupNmrShifts` -- JavaScript lookup engine (`src/lookup.js`)
+- [x] `plotSpectra` -- Canvas-based spectrum renderer (`src/plot.js`)
+- [x] `estimateFromSpectra` -- Reverse peak-to-structure search (`src/estimate.js`)
+- [x] SMILES-to-HOSE conversion in JS (openchemlib-js)
+- [x] Database code-splitting for lazy loading (256 hash-based chunks, ~0.8 MB each)
+- [x] Browser-compatible module (import.meta.url chunk resolution, npm package fields)
+
 ### To Do
 
-- [ ] `lookupNmrShifts` -- JavaScript lookup engine (`src/lookup.js`)
-- [ ] `plotSpectra` -- Canvas-based spectrum renderer (`src/plot.js`)
-- [ ] `estimateFromSpectra` -- Reverse peak-to-structure search (`src/estimate.js`)
-- [ ] SMILES-to-HOSE conversion in JS (openchemlib-js)
-- [ ] Database code-splitting for lazy loading
 - [ ] Integration tests for remaining drug categories
-- [ ] Browser bundle / npm package
+- [ ] npm publish
 
 ## Development
 
