@@ -69,10 +69,17 @@
         .shift-table tr:hover td { background: #2a2d2e; }
         .shift-value { color: #b5cea8; font-family: 'Consolas', monospace; }
         .hose-code { color: #ce9178; font-family: 'Consolas', monospace; font-size: 0.8rem; }
-        .status { padding: 0.75rem 1rem; background: #2d2d30; border-top: 1px solid #3e3e42; font-size: 0.85rem; color: #858585; }
-        .status.loading { color: #dcdcaa; }
-        .status.success { color: #4ec9b0; }
-        .status.error { color: #f48771; }
+        .spinner-overlay {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 4rem 1rem; gap: 1.5rem;
+        }
+        .spinner {
+            width: 48px; height: 48px;
+            border: 4px solid #3e3e42; border-top-color: #007acc;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner-text { color: #858585; font-size: 1rem; }
         .molecule-viewer {
             background: #fff; border: 1px solid #3e3e42; border-radius: 4px;
             display: flex; justify-content: center; align-items: center;
@@ -120,7 +127,6 @@
             <div class="output-content" id="output">
                 <div class="summary"><p style="color:#858585; text-align:center;">Enter a SMILES string or click an example to predict 13C NMR shifts</p></div>
             </div>
-            <div class="status" id="status">Ready</div>
         </div>
     </div>
 
@@ -138,11 +144,9 @@
 
         const input = document.getElementById('smiles-input');
         const output = document.getElementById('output');
-        const statusEl = document.getElementById('status');
 
-        function setStatus(text, cls) {
-            statusEl.textContent = text;
-            statusEl.className = 'status ' + (cls || '');
+        function showSpinner() {
+            output.innerHTML = '<div class="spinner-overlay"><div class="spinner"></div><div class="spinner-text">Predicting shifts\u2026</div></div>';
         }
 
         function drawLorentzianSVG(container, shifts, options = {}) {
@@ -208,18 +212,16 @@
         async function predict(smiles) {
             if (!smiles.trim()) {
                 output.innerHTML = '<div class="summary"><p style="color:#858585; text-align:center;">Enter a SMILES string</p></div>';
-                setStatus('Ready');
                 return;
             }
 
-            setStatus('Predicting...', 'loading');
+            showSpinner();
 
             try {
                 const shifts = await lookupNmrShifts(smiles, { nucleus: '13C' });
 
                 if (!shifts || shifts.length === 0) {
                     output.innerHTML = '<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">No carbon shifts predicted. Check if the SMILES is valid and contains carbon atoms.</p></div>';
-                    setStatus('No results', 'error');
                     return;
                 }
 
@@ -269,10 +271,9 @@
                     }, 10);
                 }
 
-                setStatus(`${shifts.length} carbon shifts predicted`, 'success');
+                // Spinner replaced by results above
             } catch (err) {
                 output.innerHTML = `<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">Error: ${err.message}</p></div>`;
-                setStatus('Error', 'error');
             }
         }
 
