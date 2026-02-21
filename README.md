@@ -1,12 +1,8 @@
 # vamos-hose
 
-> **Pre-release / Work in Progress** -- This project is under active development. APIs, data formats, and file structures will change without notice.
+A **pure JavaScript library** that predicts 13C NMR chemical shifts from SMILES strings. It generates HOSE codes and looks them up in a preprocessed NMRShiftDB2 database (1.4M entries). Runs entirely in the browser with no server-side dependencies — the database is code-split into 256 lazy-loaded chunks.
 
-## Goal
-
-Given a SMILES string, return predicted 13C NMR chemical shifts by looking up HOSE codes in a preprocessed version of the NMRShiftDB2 database (1.7M entries, 30 elements).
-
-The final product is a **pure JavaScript library** that runs entirely in the browser with no server-side dependencies. The database will be code-split into chunks so it can be lazy-loaded over the network.
+**[Live Demo](https://ghost---shadow.github.io/vamos-hose/)** · **[npm](https://www.npmjs.com/package/vamos-hose)**
 
 ### Target API
 
@@ -66,10 +62,9 @@ const candidates = await estimateFromSpectra({
 - [x] Browser-compatible module (import.meta.url chunk resolution, npm package fields)
 
 - [x] Integration tests for all 10 drug categories (276 tests across 35+ molecules)
-
-### To Do
-
-- [ ] npm publish
+- [x] GitHub Actions CI (test + npm publish with provenance)
+- [x] Published to npm as [`vamos-hose`](https://www.npmjs.com/package/vamos-hose)
+- [x] [Live demo](https://ghost---shadow.github.io/vamos-hose/) — interactive 13C NMR prediction playground (gh-pages)
 
 ## Development
 
