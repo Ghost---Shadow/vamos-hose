@@ -45,27 +45,6 @@ const candidates = await estimateFromSpectra({
 // Returns: [{ smiles: '...', hose: '...', matchedPeaks: 7, score: 0.87 }, ...]
 ```
 
-## Current Status
-
-### Done
-
-- [x] HOSE-to-SMILES converter (Python) -- 100% conversion rate on 1.7M entries
-- [x] Database preprocessor -- HOSE-keyed JSON with SMILES as secondary field
-- [x] Full database build -- 1,421,845 unique HOSE keys, 210 MB JSON
-- [x] Integration test suite for hypertension medications (losartan, valsartan, irbesartan, telmisartan)
-
-- [x] `lookupNmrShifts` -- JavaScript lookup engine (`src/lookup.js`)
-- [x] `plotSpectra` -- Canvas-based spectrum renderer (`src/plot.js`)
-- [x] `estimateFromSpectra` -- Reverse peak-to-structure search (`src/estimate.js`)
-- [x] SMILES-to-HOSE conversion in JS (openchemlib-js)
-- [x] Database code-splitting for lazy loading (256 hash-based chunks, ~0.8 MB each)
-- [x] Browser-compatible module (import.meta.url chunk resolution, npm package fields)
-
-- [x] Integration tests for all 10 drug categories (276 tests across 35+ molecules)
-- [x] GitHub Actions CI (test + npm publish with provenance)
-- [x] Published to npm as [`vamos-hose`](https://www.npmjs.com/package/vamos-hose)
-- [x] [Live demo](https://ghost---shadow.github.io/vamos-hose/) — interactive 13C NMR prediction playground (gh-pages)
-
 ## Development
 
 ```bash
