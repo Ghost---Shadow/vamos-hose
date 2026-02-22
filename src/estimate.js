@@ -1,4 +1,4 @@
-import { loadChunk, computeWeightedAvg } from './database.js';
+import { loadChunk, computeWeightedAvg, fetchWithRetry } from './database.js';
 import { MinHeap } from './min-heap.js';
 
 const NUM_PPM_BUCKETS = 250;
@@ -29,8 +29,7 @@ async function loadPpmFile(ppm) {
     const mod = await import(fileUrl);
     data = mod.default;
   } catch {
-    const res = await fetch(fileUrl);
-    if (!res.ok) throw new Error(`Failed to load ${fileName}: ${res.status}`);
+    const res = await fetchWithRetry(fileUrl);
     const code = await res.text();
     const match = code.match(/export\s+default\s+/);
     if (!match) throw new Error(`Invalid PPM file format: ${fileName}`);

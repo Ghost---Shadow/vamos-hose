@@ -1,10 +1,27 @@
 const NUM_CHUNKS = 256;
+const MAX_RETRIES = 3;
+const RETRY_BASE_MS = 1000;
 
 /**
  * Resolve the base URL for chunks/ relative to this module.
  * Works in both Node.js (file:// URLs) and browsers (http:// URLs).
  */
 const CHUNKS_BASE = new URL('../chunks/', import.meta.url).href;
+
+/**
+ * Fetch with retry + exponential backoff for CDN 503s.
+ */
+export async function fetchWithRetry(url, retries = MAX_RETRIES) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(url);
+    if (res.ok) return res;
+    if (res.status === 503 && attempt < retries) {
+      await new Promise(r => setTimeout(r, RETRY_BASE_MS * 2 ** attempt));
+      continue;
+    }
+    throw new Error(`Failed to load ${url}: ${res.status}`);
+  }
+}
 
 /** Cache of loaded chunks: index -> chunk data object */
 const _chunkCache = new Map();
@@ -48,8 +65,7 @@ export async function loadChunk(idx) {
     data = mod.default;
   } catch {
     // Fallback: fetch as text + parse (for CDN environments where import() fails)
-    const res = await fetch(chunkUrl);
-    if (!res.ok) throw new Error(`Failed to load ${chunkName}: ${res.status}`);
+    const res = await fetchWithRetry(chunkUrl);
     const code = await res.text();
     const match = code.match(/export\s+default\s+/);
     if (!match) throw new Error(`Invalid chunk format: ${chunkName}`);
