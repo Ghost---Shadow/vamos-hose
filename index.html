@@ -212,10 +212,16 @@
         async function predict(smiles) {
             if (!smiles.trim()) {
                 output.innerHTML = '<div class="summary"><p style="color:#858585; text-align:center;">Enter a SMILES string</p></div>';
+                const url = new URL(window.location);
+                url.searchParams.delete('smiles');
+                history.replaceState(null, '', url);
                 return;
             }
 
             showSpinner();
+            const url = new URL(window.location);
+            url.searchParams.set('smiles', smiles);
+            history.replaceState(null, '', url);
 
             try {
                 const shifts = await lookupNmrShifts(smiles, { nucleus: '13C' });
@@ -292,7 +298,9 @@
             });
         });
 
-        // Initial prediction
+        // Read SMILES from URL query param, or use default
+        const urlSmiles = new URLSearchParams(window.location.search).get('smiles');
+        if (urlSmiles) input.value = urlSmiles;
         predict(input.value);
     </script>
 </body>
