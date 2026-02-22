@@ -28,6 +28,24 @@
         }
         h1 { font-size: 1.5rem; color: #fff; }
         .subtitle { font-size: 0.9rem; color: #858585; margin-top: 0.25rem; }
+
+        /* Tab bar */
+        .tab-bar {
+            display: flex; background: #2d2d30;
+            border-bottom: 1px solid #3e3e42;
+        }
+        .tab-btn {
+            padding: 0.6rem 1.5rem; background: none; border: none;
+            color: #858585; font-size: 0.9rem; cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .tab-btn:hover { color: #d4d4d4; background: #37373d; }
+        .tab-btn.active { color: #fff; border-bottom-color: #007acc; }
+
+        .tab-content { display: none; flex: 1; overflow: hidden; }
+        .tab-content.active { display: flex; }
+
         .container { display: flex; flex: 1; overflow: hidden; }
         .panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         .panel-header {
@@ -38,12 +56,22 @@
         .input-panel { border-right: 1px solid #3e3e42; max-width: 400px; }
         .input-content { padding: 1rem; overflow-y: auto; flex: 1; }
         label { display: block; margin-bottom: 0.25rem; color: #9cdcfe; font-size: 0.9rem; }
-        input[type="text"] {
+        input[type="text"], input[type="number"], textarea {
             width: 100%; padding: 0.5rem; background: #3c3c3c; color: #d4d4d4;
             border: 1px solid #3e3e42; border-radius: 3px; font-family: 'Consolas', monospace;
             font-size: 1rem;
         }
-        input[type="text"]:focus { outline: none; border-color: #007acc; }
+        input[type="text"]:focus, input[type="number"]:focus, textarea:focus { outline: none; border-color: #007acc; }
+        textarea { resize: vertical; min-height: 80px; }
+        .param-row { display: flex; gap: 1rem; margin-top: 0.75rem; }
+        .param-group { flex: 1; }
+        .param-group input { margin-top: 0.25rem; }
+        .predict-btn {
+            display: block; width: 100%; margin-top: 1rem; padding: 0.6rem;
+            background: #007acc; color: #fff; border: none; border-radius: 3px;
+            font-size: 0.95rem; cursor: pointer; font-family: 'Segoe UI', sans-serif;
+        }
+        .predict-btn:hover { background: #1a8ad4; }
         .examples { margin-top: 1rem; }
         .examples h3 { color: #4ec9b0; font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; }
         .example-btn {
@@ -60,15 +88,21 @@
             padding: 0.5rem; margin-bottom: 1rem;
         }
         .spectrum-container svg { width: 100%; height: auto; display: block; }
-        .shift-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        .shift-table th {
+        .shift-table, .results-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .shift-table th, .results-table th {
             text-align: left; padding: 0.5rem; border-bottom: 2px solid #3e3e42;
             color: #4ec9b0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;
         }
-        .shift-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #3e3e42; }
-        .shift-table tr:hover td { background: #2a2d2e; }
+        .shift-table td, .results-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #3e3e42; }
+        .shift-table tr:hover td, .results-table tr:hover td { background: #2a2d2e; }
         .shift-value { color: #b5cea8; font-family: 'Consolas', monospace; }
         .hose-code { color: #ce9178; font-family: 'Consolas', monospace; font-size: 0.8rem; }
+        .score-bar {
+            display: inline-block; height: 14px; border-radius: 2px;
+            background: #007acc; vertical-align: middle;
+        }
+        .score-text { color: #b5cea8; font-family: 'Consolas', monospace; margin-left: 0.5rem; }
+        .smiles-cell { font-family: 'Consolas', monospace; font-size: 0.8rem; color: #ce9178; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .spinner-overlay {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             padding: 4rem 1rem; gap: 1.5rem;
@@ -93,7 +127,7 @@
         .summary-label { color: #9cdcfe; }
         .summary-value { color: #b5cea8; font-family: 'Consolas', monospace; }
         @media (max-width: 768px) {
-            .container { flex-direction: column; }
+            .container, .tab-content { flex-direction: column; }
             .input-panel { max-width: none; border-right: none; border-bottom: 1px solid #3e3e42; max-height: 40vh; }
         }
     </style>
@@ -103,7 +137,13 @@
         <h1>vamos-hose</h1>
         <p class="subtitle">Predict 13C NMR chemical shifts from SMILES using HOSE codes and nmrshiftdb2</p>
     </header>
-    <div class="container">
+    <div class="tab-bar">
+        <button class="tab-btn active" data-tab="forward">SMILES &rarr; Spectra</button>
+        <button class="tab-btn" data-tab="reverse">Spectra &rarr; SMILES</button>
+    </div>
+
+    <!-- Forward tab: SMILES to Spectra -->
+    <div class="tab-content active" id="tab-forward">
         <div class="panel input-panel">
             <div class="panel-header">Input</div>
             <div class="input-content">
@@ -124,15 +164,50 @@
         </div>
         <div class="panel">
             <div class="panel-header">13C NMR Prediction</div>
-            <div class="output-content" id="output">
+            <div class="output-content" id="forward-output">
                 <div class="summary"><p style="color:#858585; text-align:center;">Enter a SMILES string or click an example to predict 13C NMR shifts</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reverse tab: Spectra to SMILES -->
+    <div class="tab-content" id="tab-reverse">
+        <div class="panel input-panel">
+            <div class="panel-header">Input</div>
+            <div class="input-content">
+                <label for="peaks-input">Observed Peaks (ppm, comma-separated)</label>
+                <textarea id="peaks-input" placeholder="e.g. 170.4, 169.8, 151.3, 139.2, 132.8, 125.7, 124.9, 123.6, 21.5"></textarea>
+                <div class="param-row">
+                    <div class="param-group">
+                        <label for="tolerance-input">Tolerance (ppm)</label>
+                        <input type="number" id="tolerance-input" value="2.0" min="0.1" max="10" step="0.1">
+                    </div>
+                    <div class="param-group">
+                        <label for="min-matches-input">Min matches</label>
+                        <input type="number" id="min-matches-input" value="1" min="1" max="50" step="1">
+                    </div>
+                </div>
+                <button class="predict-btn" id="reverse-predict-btn">Search Database</button>
+                <div class="examples">
+                    <h3>Examples</h3>
+                    <button class="example-btn" data-peaks="170.4, 169.8, 151.3, 139.2, 132.8, 125.7, 124.9, 123.6, 21.5"><span class="name">Aspirin (9 peaks)</span>170.4, 169.8, 151.3, 139.2, 132.8, 125.7, 124.9, 123.6, 21.5</button>
+                    <button class="example-btn" data-peaks="24.4, 35.3, 40.9, 42.9, 43.1, 59.4, 66.4, 91.3, 112.9, 118.8, 119.5, 128.2, 130.1, 131.7, 142.7, 146.4, 160.4"><span class="name">Morphine (17 peaks)</span>24.4, 35.3, 40.9, 42.9, 43.1, ...</button>
+                    <button class="example-btn" data-peaks="24.2, 168.6, 115.5, 121.6, 131.6, 148.1, 153.7, 196.4"><span class="name">Acetaminophen (8 peaks)</span>24.2, 168.6, 115.5, 121.6, 131.6, ...</button>
+                    <button class="example-btn" data-peaks="14.1, 22.7, 32.0, 127.5, 128.3, 130.6, 137.0, 174.1"><span class="name">Unknown (8 peaks)</span>14.1, 22.7, 32.0, 127.5, 128.3, 130.6, 137.0, 174.1</button>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">Candidate Structures</div>
+            <div class="output-content" id="reverse-output">
+                <div class="summary"><p style="color:#858585; text-align:center;">Enter observed 13C chemical shifts and click Search Database</p></div>
             </div>
         </div>
     </div>
 
     <script src="https://unpkg.com/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
     <script type="module">
-        import { lookupNmrShifts } from 'https://unpkg.com/vamos-hose@latest/index.js';
+        import { lookupNmrShifts, estimateFromSpectra } from 'https://unpkg.com/vamos-hose@latest/index.js';
 
         let smilesDrawer;
         function initSmilesDrawer() {
@@ -142,15 +217,29 @@
         }
         window.addEventListener('load', initSmilesDrawer);
 
-        const input = document.getElementById('smiles-input');
-        const output = document.getElementById('output');
+        // ── Tab switching ─────────────────────────────────────────
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
 
-        function showSpinner() {
-            output.innerHTML = '<div class="spinner-overlay"><div class="spinner"></div><div class="spinner-text">Predicting shifts\u2026</div></div>';
+        function switchTab(tabName) {
+            tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+            tabContents.forEach(c => c.classList.toggle('active', c.id === 'tab-' + tabName));
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabName);
+            history.replaceState(null, '', url);
+        }
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+        // ── Shared utilities ──────────────────────────────────────
+        function showSpinner(outputEl, text) {
+            outputEl.innerHTML = `<div class="spinner-overlay"><div class="spinner"></div><div class="spinner-text">${text}</div></div>`;
         }
 
         function drawLorentzianSVG(container, shifts, options = {}) {
-            const { range = [0, 220], lineWidth = 0.5 } = options;
+            const { range = [0, 220], lineWidth = 0.5, title = 'Predicted 13C NMR Spectrum' } = options;
             const svgW = 800;
             const svgH = 280;
             const marginTop = 32;
@@ -162,7 +251,6 @@
             const [lo, hi] = range;
             const gamma = lineWidth;
 
-            // Build intensity curve at high resolution
             const numPts = plotW * 2;
             const curve = new Float64Array(numPts);
             for (const s of shifts) {
@@ -174,7 +262,6 @@
             }
             const maxI = Math.max(...curve) || 1;
 
-            // Build path data for the curve
             let linePath = '';
             let areaPath = `M${marginLeft},${marginTop + plotH}`;
             for (let i = 0; i < numPts; i++) {
@@ -186,7 +273,6 @@
             }
             areaPath += `L${marginLeft + plotW},${marginTop + plotH}Z`;
 
-            // Build tick marks
             const step = hi - lo <= 50 ? 5 : hi - lo <= 100 ? 10 : 20;
             let ticksSVG = '';
             for (let ppm = Math.ceil(lo / step) * step; ppm <= hi; ppm += step) {
@@ -196,29 +282,43 @@
                 ticksSVG += `<text x="${x}" y="${yBase + 20}" text-anchor="middle" fill="#333" font-family="Consolas, monospace" font-size="12">${ppm}</text>`;
             }
 
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}">
+            container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}">
                 <rect width="${svgW}" height="${svgH}" fill="#fff"/>
-                <text x="${marginLeft + 4}" y="20" font-family="Segoe UI, sans-serif" font-size="14" font-weight="bold" fill="#333">Predicted 13C NMR Spectrum</text>
+                <text x="${marginLeft + 4}" y="20" font-family="Segoe UI, sans-serif" font-size="14" font-weight="bold" fill="#333">${title}</text>
                 <path d="${areaPath}" fill="rgba(0,100,200,0.15)"/>
                 <path d="${linePath}" fill="none" stroke="#0064c8" stroke-width="1.5"/>
                 <line x1="${marginLeft}" y1="${marginTop + plotH}" x2="${marginLeft + plotW}" y2="${marginTop + plotH}" stroke="#333" stroke-width="1"/>
                 ${ticksSVG}
                 <text x="${svgW / 2}" y="${svgH - 8}" text-anchor="middle" fill="#333" font-family="Segoe UI, sans-serif" font-size="13">Chemical Shift (ppm)</text>
             </svg>`;
-
-            container.innerHTML = svg;
         }
 
-        async function predict(smiles) {
+        function drawMolecule(smiles, svgId) {
+            initSmilesDrawer();
+            if (!smilesDrawer) return;
+            setTimeout(() => {
+                try {
+                    SmilesDrawer.parse(smiles, tree => {
+                        smilesDrawer.draw(tree, svgId, 'light', false);
+                    }, () => {});
+                } catch (e) {}
+            }, 10);
+        }
+
+        // ── Forward tab: SMILES → Spectra ─────────────────────────
+        const forwardInput = document.getElementById('smiles-input');
+        const forwardOutput = document.getElementById('forward-output');
+
+        async function predictForward(smiles) {
             if (!smiles.trim()) {
-                output.innerHTML = '<div class="summary"><p style="color:#858585; text-align:center;">Enter a SMILES string</p></div>';
+                forwardOutput.innerHTML = '<div class="summary"><p style="color:#858585; text-align:center;">Enter a SMILES string</p></div>';
                 const url = new URL(window.location);
                 url.searchParams.delete('smiles');
                 history.replaceState(null, '', url);
                 return;
             }
 
-            showSpinner();
+            showSpinner(forwardOutput, 'Predicting shifts\u2026');
             const url = new URL(window.location);
             url.searchParams.set('smiles', smiles);
             history.replaceState(null, '', url);
@@ -227,7 +327,7 @@
                 const shifts = await lookupNmrShifts(smiles, { nucleus: '13C' });
 
                 if (!shifts || shifts.length === 0) {
-                    output.innerHTML = '<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">No carbon shifts predicted. Check if the SMILES is valid and contains carbon atoms.</p></div>';
+                    forwardOutput.innerHTML = '<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">No carbon shifts predicted. Check if the SMILES is valid and contains carbon atoms.</p></div>';
                     return;
                 }
 
@@ -236,72 +336,162 @@
                 const maxShift = Math.max(...shifts.map(s => s.shift));
 
                 let html = '';
-
-                // Molecule viewer
                 html += '<div class="molecule-viewer"><svg id="mol-svg" width="400" height="200"></svg></div>';
-
-                // Summary
                 html += '<div class="summary">';
                 html += `<div class="summary-row"><span class="summary-label">Carbon atoms</span><span class="summary-value">${shifts.length}</span></div>`;
                 html += `<div class="summary-row"><span class="summary-label">Shift range</span><span class="summary-value">${minShift.toFixed(1)} - ${maxShift.toFixed(1)} ppm</span></div>`;
                 html += '</div>';
-
-                // Spectrum (SVG)
                 html += '<div class="spectrum-container" id="spectrum-container"></div>';
-
-                // Shift table
                 html += '<table class="shift-table"><thead><tr><th>#</th><th>Shift (ppm)</th><th>HOSE Code</th></tr></thead><tbody>';
                 sorted.forEach((s, i) => {
                     html += `<tr><td>${i + 1}</td><td class="shift-value">${s.shift.toFixed(1)}</td><td class="hose-code">${s.hose || ''}</td></tr>`;
                 });
                 html += '</tbody></table>';
 
-                output.innerHTML = html;
+                forwardOutput.innerHTML = html;
 
-                // Draw spectrum
                 const specContainer = document.getElementById('spectrum-container');
                 if (specContainer) drawLorentzianSVG(specContainer, shifts);
-
-                // Draw molecule
-                initSmilesDrawer();
-                if (smilesDrawer) {
-                    setTimeout(() => {
-                        try {
-                            SmilesDrawer.parse(smiles, tree => {
-                                smilesDrawer.draw(tree, 'mol-svg', 'light', false);
-                            }, err => {
-                                const viewer = document.querySelector('.molecule-viewer');
-                                if (viewer) viewer.innerHTML = `<p style="color:#f48771;">Cannot render: ${err}</p>`;
-                            });
-                        } catch (e) {}
-                    }, 10);
-                }
-
-                // Spinner replaced by results above
+                drawMolecule(smiles, 'mol-svg');
             } catch (err) {
-                output.innerHTML = `<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">Error: ${err.message}</p></div>`;
+                forwardOutput.innerHTML = `<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">Error: ${err.message}</p></div>`;
             }
         }
 
-        // Debounce input
-        let timer;
-        input.addEventListener('input', () => {
-            clearTimeout(timer);
-            timer = setTimeout(() => predict(input.value), 500);
+        let forwardTimer;
+        forwardInput.addEventListener('input', () => {
+            clearTimeout(forwardTimer);
+            forwardTimer = setTimeout(() => predictForward(forwardInput.value), 500);
         });
 
-        // Example buttons
-        document.querySelectorAll('.example-btn').forEach(btn => {
+        document.querySelectorAll('#tab-forward .example-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                input.value = btn.dataset.smiles;
-                predict(input.value);
+                forwardInput.value = btn.dataset.smiles;
+                predictForward(forwardInput.value);
             });
         });
 
-        // Read SMILES from URL query param, or use default
-        const urlSmiles = new URLSearchParams(window.location.search).get('smiles');
-        if (urlSmiles) input.value = urlSmiles;
-        predict(input.value);
+        // ── Reverse tab: Spectra → SMILES ─────────────────────────
+        const peaksInput = document.getElementById('peaks-input');
+        const toleranceInput = document.getElementById('tolerance-input');
+        const minMatchesInput = document.getElementById('min-matches-input');
+        const reverseOutput = document.getElementById('reverse-output');
+        const reversePredictBtn = document.getElementById('reverse-predict-btn');
+
+        async function predictReverse() {
+            const peaksStr = peaksInput.value.trim();
+            if (!peaksStr) {
+                reverseOutput.innerHTML = '<div class="summary"><p style="color:#858585; text-align:center;">Enter observed peaks</p></div>';
+                return;
+            }
+
+            const peaks = peaksStr.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+            if (peaks.length === 0) {
+                reverseOutput.innerHTML = '<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">No valid peak values found. Enter comma-separated numbers.</p></div>';
+                return;
+            }
+
+            const tolerance = parseFloat(toleranceInput.value) || 2.0;
+            const minMatches = parseInt(minMatchesInput.value) || 1;
+
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('peaks', peaks.join(','));
+            url.searchParams.set('tolerance', tolerance);
+            if (minMatches > 1) url.searchParams.set('minMatches', minMatches);
+            else url.searchParams.delete('minMatches');
+            history.replaceState(null, '', url);
+
+            showSpinner(reverseOutput, 'Searching database\u2026 (first search loads ~200 MB)');
+
+            try {
+                const candidates = await estimateFromSpectra({
+                    nucleus: '13C',
+                    peaks,
+                    tolerance,
+                    minMatches,
+                    maxResults: 20,
+                });
+
+                if (!candidates || candidates.length === 0) {
+                    reverseOutput.innerHTML = '<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">No matching structures found. Try increasing tolerance or reducing min matches.</p></div>';
+                    return;
+                }
+
+                let html = '';
+
+                // Input spectrum preview
+                const peakShifts = peaks.map(p => ({ shift: p }));
+                html += '<div class="spectrum-container" id="reverse-spectrum"></div>';
+
+                // Summary
+                html += '<div class="summary">';
+                html += `<div class="summary-row"><span class="summary-label">Input peaks</span><span class="summary-value">${peaks.length}</span></div>`;
+                html += `<div class="summary-row"><span class="summary-label">Candidates found</span><span class="summary-value">${candidates.length}</span></div>`;
+                html += `<div class="summary-row"><span class="summary-label">Tolerance</span><span class="summary-value">\u00b1${tolerance} ppm</span></div>`;
+                html += '</div>';
+
+                // Top candidate molecule
+                if (candidates[0].smiles) {
+                    html += '<div class="molecule-viewer"><svg id="top-candidate-svg" width="400" height="200"></svg></div>';
+                }
+
+                // Results table
+                html += '<table class="results-table"><thead><tr><th>#</th><th>SMILES</th><th>Score</th><th>Matched</th></tr></thead><tbody>';
+                candidates.forEach((c, i) => {
+                    const pct = (c.score * 100).toFixed(1);
+                    const barW = Math.max(2, Math.round(c.score * 100));
+                    html += `<tr>`;
+                    html += `<td>${i + 1}</td>`;
+                    html += `<td class="smiles-cell" title="${c.smiles || c.hose}">${c.smiles || c.hose}</td>`;
+                    html += `<td><span class="score-bar" style="width:${barW}px"></span><span class="score-text">${pct}%</span></td>`;
+                    html += `<td class="shift-value">${c.matchedPeaks}/${peaks.length}</td>`;
+                    html += `</tr>`;
+                });
+                html += '</tbody></table>';
+
+                reverseOutput.innerHTML = html;
+
+                // Draw input spectrum
+                const specEl = document.getElementById('reverse-spectrum');
+                if (specEl) drawLorentzianSVG(specEl, peakShifts, { title: 'Input Peaks' });
+
+                // Draw top candidate molecule
+                if (candidates[0].smiles) {
+                    drawMolecule(candidates[0].smiles, 'top-candidate-svg');
+                }
+            } catch (err) {
+                reverseOutput.innerHTML = `<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">Error: ${err.message}</p></div>`;
+            }
+        }
+
+        reversePredictBtn.addEventListener('click', predictReverse);
+
+        document.querySelectorAll('#tab-reverse .example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                peaksInput.value = btn.dataset.peaks;
+                predictReverse();
+            });
+        });
+
+        // ── Initialization from URL ───────────────────────────────
+        const params = new URLSearchParams(window.location.search);
+        const initialTab = params.get('tab') || 'forward';
+        switchTab(initialTab);
+
+        if (initialTab === 'reverse') {
+            const urlPeaks = params.get('peaks');
+            const urlTol = params.get('tolerance');
+            const urlMin = params.get('minMatches');
+            if (urlPeaks) peaksInput.value = urlPeaks;
+            if (urlTol) toleranceInput.value = urlTol;
+            if (urlMin) minMatchesInput.value = urlMin;
+            if (urlPeaks) predictReverse();
+        } else {
+            const urlSmiles = params.get('smiles');
+            if (urlSmiles) forwardInput.value = urlSmiles;
+            predictForward(forwardInput.value);
+        }
     </script>
 </body>
 </html>
