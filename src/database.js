@@ -28,11 +28,10 @@ function chunkIndex(hoseCode) {
 }
 
 /**
- * Load a single chunk by index via dynamic import().
+ * Load a single chunk by index.
+ * Tries dynamic import() first; falls back to fetch() + Function eval
+ * for environments where dynamic import() of ESM from CDN URLs fails.
  * Cached after first load.
- *
- * Works in Node.js (file:// URLs) and browsers (http:// URLs)
- * as long as the chunks/ directory is served alongside this module.
  *
  * @param {number} idx - chunk index (0-255)
  * @returns {Promise<object>} the chunk's HOSE-to-entry mapping
@@ -43,8 +42,21 @@ async function loadChunk(idx) {
   const chunkName = `chunk_${String(idx).padStart(3, '0')}.js`;
   const chunkUrl = CHUNKS_BASE + chunkName;
 
-  const mod = await import(chunkUrl);
-  const data = mod.default;
+  let data;
+  try {
+    const mod = await import(chunkUrl);
+    data = mod.default;
+  } catch {
+    // Fallback: fetch as text + parse (for CDN environments where import() fails)
+    const res = await fetch(chunkUrl);
+    if (!res.ok) throw new Error(`Failed to load ${chunkName}: ${res.status}`);
+    const code = await res.text();
+    const match = code.match(/export\s+default\s+/);
+    if (!match) throw new Error(`Invalid chunk format: ${chunkName}`);
+    // eslint-disable-next-line no-new-func
+    data = new Function(`return (${code.slice(match.index + match[0].length)})`)();
+  }
+
   _chunkCache.set(idx, data);
   return data;
 }
@@ -89,18 +101,30 @@ export async function preloadChunks(hoseCodes) {
 
 /**
  * Load the entire database by loading all 256 chunks.
+ * Loads in batches to avoid overwhelming CDN rate limits.
  * Returns a merged object with all HOSE entries.
- * Provided for backward compatibility with tests.
  *
+ * @param {object} [options]
+ * @param {function} [options.onProgress] - callback(loaded, total) for progress reporting
  * @returns {Promise<object>} the full database as a single object
  */
-export async function loadDatabase() {
-  const indices = Array.from({ length: NUM_CHUNKS }, (_, i) => i);
-  const chunks = await Promise.all(indices.map(loadChunk));
+export async function loadDatabase(options = {}) {
+  const { onProgress } = options;
+  // Use smaller batches for HTTP to avoid CDN rate limits; full parallel for local files
+  const isHTTP = CHUNKS_BASE.startsWith('http');
+  const BATCH_SIZE = isHTTP ? 16 : NUM_CHUNKS;
   const merged = {};
-  for (const chunk of chunks) {
-    Object.assign(merged, chunk);
+
+  for (let start = 0; start < NUM_CHUNKS; start += BATCH_SIZE) {
+    const end = Math.min(start + BATCH_SIZE, NUM_CHUNKS);
+    const batch = Array.from({ length: end - start }, (_, i) => start + i);
+    const chunks = await Promise.all(batch.map(loadChunk));
+    for (const chunk of chunks) {
+      Object.assign(merged, chunk);
+    }
+    if (onProgress) onProgress(end, NUM_CHUNKS);
   }
+
   return merged;
 }
 
