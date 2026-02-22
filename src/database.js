@@ -1,12 +1,23 @@
 const NUM_CHUNKS = 256;
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 1000;
+export const IMPORT_TIMEOUT_MS = 15000;
 
 /**
  * Resolve the base URL for chunks/ relative to this module.
  * Works in both Node.js (file:// URLs) and browsers (http:// URLs).
  */
 const CHUNKS_BASE = new URL('../chunks/', import.meta.url).href;
+
+/**
+ * Race a promise against a timeout.
+ */
+export function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+  ]);
+}
 
 /**
  * Fetch with retry + exponential backoff for CDN 503s.
@@ -46,8 +57,8 @@ export function chunkIndex(hoseCode) {
 
 /**
  * Load a single chunk by index.
- * Tries dynamic import() first; falls back to fetch() + Function eval
- * for environments where dynamic import() of ESM from CDN URLs fails.
+ * Tries dynamic import() with timeout first; falls back to fetch() + Function eval.
+ * Retries the entire load up to MAX_RETRIES times on failure.
  * Cached after first load.
  *
  * @param {number} idx - chunk index (0-255)
@@ -59,22 +70,32 @@ export async function loadChunk(idx) {
   const chunkName = `chunk_${String(idx).padStart(3, '0')}.js`;
   const chunkUrl = CHUNKS_BASE + chunkName;
 
-  let data;
-  try {
-    const mod = await import(chunkUrl);
-    data = mod.default;
-  } catch {
-    // Fallback: fetch as text + parse (for CDN environments where import() fails)
-    const res = await fetchWithRetry(chunkUrl);
-    const code = await res.text();
-    const match = code.match(/export\s+default\s+/);
-    if (!match) throw new Error(`Invalid chunk format: ${chunkName}`);
-    // eslint-disable-next-line no-new-func
-    data = new Function(`return (${code.slice(match.index + match[0].length)})`)();
+  let lastError;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      await new Promise(r => setTimeout(r, RETRY_BASE_MS * 2 ** (attempt - 1)));
+    }
+    try {
+      let data;
+      try {
+        const mod = await withTimeout(import(chunkUrl), IMPORT_TIMEOUT_MS);
+        data = mod.default;
+      } catch {
+        // Fallback: fetch as text + parse (for CDN environments where import() fails)
+        const res = await fetchWithRetry(chunkUrl, 0);
+        const code = await res.text();
+        const match = code.match(/export\s+default\s+/);
+        if (!match) throw new Error(`Invalid chunk format: ${chunkName}`);
+        // eslint-disable-next-line no-new-func
+        data = new Function(`return (${code.slice(match.index + match[0].length)})`)();
+      }
+      _chunkCache.set(idx, data);
+      return data;
+    } catch (err) {
+      lastError = err;
+    }
   }
-
-  _chunkCache.set(idx, data);
-  return data;
+  throw lastError;
 }
 
 /**

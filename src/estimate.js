@@ -1,4 +1,4 @@
-import { loadChunk, computeWeightedAvg, fetchWithRetry } from './database.js';
+import { computeWeightedAvg, fetchWithRetry, withTimeout, IMPORT_TIMEOUT_MS } from './database.js';
 import { MinHeap } from './min-heap.js';
 
 const NUM_PPM_BUCKETS = 250;
@@ -8,7 +8,7 @@ const NUM_PPM_BUCKETS = 250;
  */
 const INDEX_BASE = new URL('../inverted-index/', import.meta.url).href;
 
-/** Cache of loaded PPM files: ppm -> array of [chunkIdx, shift] */
+/** Cache of loaded PPM files: ppm -> array of [hoseCode, shift] */
 const _ppmCache = new Map();
 
 /**
@@ -16,7 +16,7 @@ const _ppmCache = new Map();
  * Tries dynamic import() first; falls back to fetch() + Function eval.
  *
  * @param {number} ppm - integer ppm bucket (0-249)
- * @returns {Promise<Array<[number, number]>>} array of [chunkIdx, shift]
+ * @returns {Promise<Array<[string, number]>>} array of [hoseCode, shift]
  */
 async function loadPpmFile(ppm) {
   if (_ppmCache.has(ppm)) return _ppmCache.get(ppm);
@@ -26,7 +26,7 @@ async function loadPpmFile(ppm) {
 
   let data;
   try {
-    const mod = await import(fileUrl);
+    const mod = await withTimeout(import(fileUrl), IMPORT_TIMEOUT_MS);
     data = mod.default;
   } catch {
     const res = await fetchWithRetry(fileUrl);
@@ -52,12 +52,10 @@ export function clearEstimateCache() {
  * Reverse lookup: given observed NMR peaks, find the closest HOSE codes
  * in the database using the shift-keyed inverted index.
  *
- * Loads only the relevant PPM index files (~1-2 MB) and uses a min-heap
- * to keep only the top results. Then loads the corresponding chunks to
- * retrieve the actual HOSE codes.
+ * Each PPM file contains [hoseCode, shift] pairs, so HOSE codes are
+ * resolved directly without loading any chunk files.
  *
  * @param {object} options
- * @param {string}   [options.nucleus='13C'] - target nucleus (only 13C supported)
  * @param {number[]} options.peaks           - observed chemical shifts (ppm)
  * @param {number}   [options.tolerance=2.0] - ppm tolerance per peak
  * @param {number}   [options.maxResults=10] - max results per peak
@@ -89,51 +87,24 @@ export async function estimateFromSpectra(options = {}) {
     const heap = new MinHeap(maxResults);
 
     for (const entries of ppmFiles) {
-      for (const [chunkIdx, shift] of entries) {
+      for (const [hoseCode, shift] of entries) {
         const error = Math.abs(shift - peak);
         if (error <= tolerance) {
-          heap.push({ key: error, chunkIdx, shift });
+          heap.push({ key: error, hose: hoseCode, shift });
         }
       }
     }
 
-    // Resolve top results: load chunks and find matching HOSE codes
+    // Extract top results directly — no chunk loading needed
     const topEntries = heap.toArray();
-    const peakResults = [];
-
-    for (const entry of topEntries) {
-      const chunk = await loadChunk(entry.chunkIdx);
-      // Find HOSE entries in this chunk whose weighted avg matches the shift
-      const hoseCode = findHoseByShift(chunk, entry.shift);
-      if (hoseCode) {
-        peakResults.push({
-          hose: hoseCode,
-          shift: entry.shift,
-          error: Math.round(entry.key * 1000) / 1000,
-        });
-      }
-    }
-
-    result[peak] = peakResults;
+    result[peak] = topEntries.map(entry => ({
+      hose: entry.hose,
+      shift: entry.shift,
+      error: Math.round(entry.key * 1000) / 1000,
+    }));
   }
 
   return result;
-}
-
-/**
- * Find the HOSE code in a chunk whose weighted avg shift matches the target.
- *
- * @param {object} chunk - chunk data (hoseCode -> entry)
- * @param {number} targetShift - the exact shift value to find
- * @returns {string|null} the matching HOSE code, or null
- */
-function findHoseByShift(chunk, targetShift) {
-  for (const [hoseCode, entry] of Object.entries(chunk)) {
-    if (entry.n !== 'C') continue;
-    const shift = computeWeightedAvg(entry);
-    if (shift === targetShift) return hoseCode;
-  }
-  return null;
 }
 
 /**

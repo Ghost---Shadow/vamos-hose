@@ -1,1 +1,1 @@
-export default [[187,246.7],[234,246.7],[162,246.7],[13,246.7],[78,246.7],[150,246.7]];
+export default [["=SCS(,CCN,C/H=C,HHH,=&,=&C/\\H|H,*C*C)",246.7],["=SCS(,CCN,C/H=C,HHH,=&,=&C/HH,*C*C),H,H,*C,*C/",246.7],["=SCS(,CCN,C/H=C,HHH,=&,=&C/\\H|H,*C*C),H,H,*C,*C/,H,H,*C,*&/",246.7],["=SCS(,CCN,C/H=C,HHH,=&,=&C/HH,*C*C)",246.7],["=SCS(,CCN,C/H=C,HHH,=&,=&C/\\H|H,*C*C),H,H,*C,*C/",246.7],["=SCS(,CCN,C/H=C,HHH,=&,=&C/HH,*C*C),H,H,*C,*C/,H,H,*C,*&/",246.7]];

@@ -1,1 +1,1 @@
-export default [[73,248.8],[204,248.8],[136,248.8],[6,248.8],[90,248.8],[227,248.8]];
+export default [["=OCQ(,HHH,CCC/HHH,HHH,HHH/)/",248.8],["=OCQ(,HHH,CCC/",248.8],["=OCQ(",248.8],["=OCQ(,HHH,CCC/HHH,HHH,HHH/)//",248.8],["=OCQ(,HHH,CCC/HHH,HHH,HHH/)",248.8],["=OCQ(,HHH,CCC/HHH,HHH,HHH/",248.8]];

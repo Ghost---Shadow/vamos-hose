@@ -1,1 +1,1 @@
-export default [[205,232.4],[121,232.4],[129,232.4],[91,232.5],[187,232.4],[32,232.4],[44,232.4],[88,232.4],[220,232.4],[252,232.4]];
+export default [["=SCC(,=CC,=O&/&O,HHC,/,C,HHC),HCC,HHC/,HHH,HHH,HHH/",232.4],["=SCC(,=CC,=O&/&O,HHC,/",232.4],["=SCC(,=CC,=O&/\\&|O,HHC,/,C,HHC),HCC,HHC/,HHH,HHH,HHH/",232.4],["=SCS(,=CC,C/",232.5],["=SCC(,=CC,=O&/\\&|O,HHC,/",232.4],["=SCC(,=CC,=O&/\\&|O,HHC,/,C,HHC)",232.4],["=SCC(,=CC,=O&/&O,HHC,/,C,HHC)",232.4],["=SCC(,=CC,=O&/&O,HHC,/,C,HHC),HCC,HHC/",232.4],["=SCC(,=CC,=O&/\\&|O,HHC,/,C,HHC),HCC,HHC/",232.4],["=SCC(,=CC,=O&/",232.4]];

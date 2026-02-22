@@ -2,10 +2,10 @@
  * Build a shift-keyed inverted index from the monolithic hose_shift_lookup.json.
  *
  * Creates 250 PPM files (ppm_000.js through ppm_249.js) in inverted-index/.
- * Each file maps a 1-ppm range to an array of [chunkIndex, exactShift] pairs.
+ * Each file maps a 1-ppm range to an array of [hoseCode, exactShift] pairs.
  *
  * This lets the reverse lookup (estimateFromSpectra) load only the PPM files
- * relevant to the user's peaks, instead of all 256 HOSE-code chunks (~211 MB).
+ * relevant to the user's peaks, without needing to load any chunk files.
  *
  * Usage: node cleaning-scripts/build_inverted_index.mjs
  */
@@ -16,19 +16,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const NUM_CHUNKS = 256;
 const NUM_PPM_BUCKETS = 250;
 const INPUT = path.join(__dirname, 'hose_shift_lookup.json');
 const OUTPUT_DIR = path.join(__dirname, '..', 'inverted-index');
-
-/** Must match src/database.js hashCode */
-function hashCode(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
-}
 
 /** Must match src/database.js computeWeightedAvg */
 function computeWeightedAvg(entry) {
@@ -52,7 +42,7 @@ if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 }
 
-// Build PPM buckets: bucket[ppm] = [[chunkIdx, shift], ...]
+// Build PPM buckets: bucket[ppm] = [[hoseCode, shift], ...]
 const buckets = new Array(NUM_PPM_BUCKETS).fill(null).map(() => []);
 let skipped = 0;
 
@@ -65,8 +55,7 @@ for (const hoseCode of keys) {
 
   if (ppm < 0 || ppm >= NUM_PPM_BUCKETS) { skipped++; continue; }
 
-  const chunkIdx = hashCode(hoseCode) % NUM_CHUNKS;
-  buckets[ppm].push([chunkIdx, shift]);
+  buckets[ppm].push([hoseCode, shift]);
 }
 
 // Write each PPM bucket as a JS file
