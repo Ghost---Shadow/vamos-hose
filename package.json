@@ -1,6 +1,6 @@
 {
   "name": "vamos-hose",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Predict 13C NMR chemical shifts from SMILES using HOSE codes and nmrshiftdb2",
   "main": "index.js",
   "type": "module",
