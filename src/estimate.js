@@ -1,62 +1,154 @@
-import { loadDatabase, computeWeightedAvg } from './database.js';
+import { loadChunk, computeWeightedAvg } from './database.js';
+import { MinHeap } from './min-heap.js';
+
+const NUM_PPM_BUCKETS = 250;
 
 /**
- * Reverse lookup: given observed NMR peaks, find candidate structures
- * in the database whose HOSE-predicted shifts match the peak pattern.
+ * Resolve the base URL for inverted-index/ relative to this module.
+ */
+const INDEX_BASE = new URL('../inverted-index/', import.meta.url).href;
+
+/** Cache of loaded PPM files: ppm -> array of [chunkIdx, shift] */
+const _ppmCache = new Map();
+
+/**
+ * Load a single PPM index file by bucket number.
+ * Tries dynamic import() first; falls back to fetch() + Function eval.
  *
- * Loads the entire sharded database and scans all entries. This is a
- * heavy operation (~210 MB) intended for structure elucidation workflows.
+ * @param {number} ppm - integer ppm bucket (0-249)
+ * @returns {Promise<Array<[number, number]>>} array of [chunkIdx, shift]
+ */
+async function loadPpmFile(ppm) {
+  if (_ppmCache.has(ppm)) return _ppmCache.get(ppm);
+
+  const fileName = `ppm_${String(ppm).padStart(3, '0')}.js`;
+  const fileUrl = INDEX_BASE + fileName;
+
+  let data;
+  try {
+    const mod = await import(fileUrl);
+    data = mod.default;
+  } catch {
+    const res = await fetch(fileUrl);
+    if (!res.ok) throw new Error(`Failed to load ${fileName}: ${res.status}`);
+    const code = await res.text();
+    const match = code.match(/export\s+default\s+/);
+    if (!match) throw new Error(`Invalid PPM file format: ${fileName}`);
+    // eslint-disable-next-line no-new-func
+    data = new Function(`return (${code.slice(match.index + match[0].length)})`)();
+  }
+
+  _ppmCache.set(ppm, data);
+  return data;
+}
+
+/**
+ * Clear the PPM index cache. Frees memory after reverse lookup.
+ */
+export function clearEstimateCache() {
+  _ppmCache.clear();
+}
+
+/**
+ * Reverse lookup: given observed NMR peaks, find the closest HOSE codes
+ * in the database using the shift-keyed inverted index.
+ *
+ * Loads only the relevant PPM index files (~1-2 MB) and uses a min-heap
+ * to keep only the top results. Then loads the corresponding chunks to
+ * retrieve the actual HOSE codes.
  *
  * @param {object} options
- * @param {string}   [options.nucleus='13C'] - target nucleus
+ * @param {string}   [options.nucleus='13C'] - target nucleus (only 13C supported)
  * @param {number[]} options.peaks           - observed chemical shifts (ppm)
  * @param {number}   [options.tolerance=2.0] - ppm tolerance per peak
- * @param {number}   [options.minMatches=1]  - minimum peaks that must match
- * @param {number}   [options.maxResults=50] - maximum candidates to return
- * @returns {Promise<Array<{smiles: string, hose: string, matchedPeaks: number, score: number}>>}
+ * @param {number}   [options.maxResults=10] - max results per peak
+ * @returns {Promise<Object<string, Array<{hose: string, shift: number, error: number}>>>}
+ *          Map from peak value to array of matching HOSE entries
  */
 export async function estimateFromSpectra(options = {}) {
   const {
-    nucleus = '13C',
     peaks = [],
     tolerance = 2.0,
-    minMatches = 1,
-    maxResults = 50,
+    maxResults = 10,
   } = options;
 
-  if (peaks.length === 0) return [];
+  if (peaks.length === 0) return {};
 
-  const targetNucleus = nucleusToShort(nucleus);
-  const db = await loadDatabase();
+  const result = {};
 
-  // Score every HOSE entry against the observed peaks
-  const candidates = scoreDatabase(db, peaks, tolerance, minMatches, targetNucleus);
+  for (const peak of peaks) {
+    // Determine which PPM bucket files to load
+    const lo = Math.max(0, Math.floor(peak - tolerance));
+    const hi = Math.min(NUM_PPM_BUCKETS - 1, Math.floor(peak + tolerance));
 
-  // Sort by score descending, then by matchedPeaks descending
-  candidates.sort((a, b) => b.score - a.score || b.matchedPeaks - a.matchedPeaks);
+    // Load relevant PPM files in parallel
+    const ppmIndices = [];
+    for (let p = lo; p <= hi; p++) ppmIndices.push(p);
+    const ppmFiles = await Promise.all(ppmIndices.map(loadPpmFile));
 
-  return candidates.slice(0, maxResults);
+    // Use a min-heap (max-heap internally) to keep top N by smallest error
+    const heap = new MinHeap(maxResults);
+
+    for (const entries of ppmFiles) {
+      for (const [chunkIdx, shift] of entries) {
+        const error = Math.abs(shift - peak);
+        if (error <= tolerance) {
+          heap.push({ key: error, chunkIdx, shift });
+        }
+      }
+    }
+
+    // Resolve top results: load chunks and find matching HOSE codes
+    const topEntries = heap.toArray();
+    const peakResults = [];
+
+    for (const entry of topEntries) {
+      const chunk = await loadChunk(entry.chunkIdx);
+      // Find HOSE entries in this chunk whose weighted avg matches the shift
+      const hoseCode = findHoseByShift(chunk, entry.shift);
+      if (hoseCode) {
+        peakResults.push({
+          hose: hoseCode,
+          shift: entry.shift,
+          error: Math.round(entry.key * 1000) / 1000,
+        });
+      }
+    }
+
+    result[peak] = peakResults;
+  }
+
+  return result;
+}
+
+/**
+ * Find the HOSE code in a chunk whose weighted avg shift matches the target.
+ *
+ * @param {object} chunk - chunk data (hoseCode -> entry)
+ * @param {number} targetShift - the exact shift value to find
+ * @returns {string|null} the matching HOSE code, or null
+ */
+function findHoseByShift(chunk, targetShift) {
+  for (const [hoseCode, entry] of Object.entries(chunk)) {
+    if (entry.n !== 'C') continue;
+    const shift = computeWeightedAvg(entry);
+    if (shift === targetShift) return hoseCode;
+  }
+  return null;
 }
 
 /**
  * Score all database entries against observed peaks.
- *
- * For each HOSE entry, compute its weighted-average shift and check
- * how many observed peaks it falls within tolerance of. Group results
- * by SMILES to aggregate matches across multiple HOSE codes from the
- * same molecule.
- *
- * Exported for unit-testing.
+ * Kept for backward compatibility with existing tests.
  *
  * @param {object} db - full merged database
  * @param {number[]} peaks
  * @param {number} tolerance
  * @param {number} minMatches
- * @param {string} targetNucleus - e.g. 'C'
+ * @param {string} targetNucleus
  * @returns {Array<{smiles: string, hose: string, matchedPeaks: number, score: number}>}
  */
 export function scoreDatabase(db, peaks, tolerance, minMatches, targetNucleus) {
-  // Build per-SMILES accumulator: smiles -> { hoses[], matchedPeakSet, totalError }
   const bySmiles = new Map();
 
   for (const [hoseCode, entry] of Object.entries(db)) {
@@ -64,7 +156,6 @@ export function scoreDatabase(db, peaks, tolerance, minMatches, targetNucleus) {
 
     const shift = computeWeightedAvg(entry);
 
-    // Check which observed peaks this shift matches
     for (let i = 0; i < peaks.length; i++) {
       const err = Math.abs(shift - peaks[i]);
       if (err <= tolerance) {
@@ -86,7 +177,6 @@ export function scoreDatabase(db, peaks, tolerance, minMatches, targetNucleus) {
     }
   }
 
-  // Convert to result array, filtering by minMatches
   const results = [];
   for (const [smiles, acc] of bySmiles) {
     const matched = acc.matchedPeaks.size;
@@ -104,14 +194,4 @@ export function scoreDatabase(db, peaks, tolerance, minMatches, targetNucleus) {
   }
 
   return results;
-}
-
-/**
- * Map nucleus string to short nucleus letter.
- * '13C' -> 'C', '1H' -> 'H'
- */
-function nucleusToShort(nucleus) {
-  const match = nucleus.match(/(\d+)([A-Z][a-z]?)/);
-  if (match) return match[2];
-  return nucleus.replace(/[0-9]/g, '');
 }

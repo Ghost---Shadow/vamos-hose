@@ -23,7 +23,7 @@ function hashCode(str) {
 /**
  * Get the chunk index for a given HOSE code.
  */
-function chunkIndex(hoseCode) {
+export function chunkIndex(hoseCode) {
   return hashCode(hoseCode) % NUM_CHUNKS;
 }
 
@@ -36,7 +36,7 @@ function chunkIndex(hoseCode) {
  * @param {number} idx - chunk index (0-255)
  * @returns {Promise<object>} the chunk's HOSE-to-entry mapping
  */
-async function loadChunk(idx) {
+export async function loadChunk(idx) {
   if (_chunkCache.has(idx)) return _chunkCache.get(idx);
 
   const chunkName = `chunk_${String(idx).padStart(3, '0')}.js`;

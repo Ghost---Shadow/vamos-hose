@@ -57,51 +57,59 @@ describe('scoreDatabase', () => {
 });
 
 describe('estimateFromSpectra', () => {
-  test('returns empty array for empty peaks', async () => {
+  test('returns empty object for empty peaks', async () => {
     const result = await estimateFromSpectra({ peaks: [] });
-    expect(result).toEqual([]);
+    expect(result).toEqual({});
   });
 
-  test('returns candidates for ethane-like peaks', async () => {
+  test('returns per-peak results with HOSE codes', async () => {
     // Ethane: ~6 ppm in 13C
     const result = await estimateFromSpectra({
-      nucleus: '13C',
       peaks: [6.0],
       tolerance: 3.0,
-      minMatches: 1,
     });
-    expect(Array.isArray(result)).toBe(true);
-    expect(result.length).toBeGreaterThan(0);
-    for (const c of result) {
-      expect(c).toHaveProperty('smiles');
+    expect(typeof result).toBe('object');
+    expect(result[6.0]).toBeDefined();
+    expect(Array.isArray(result[6.0])).toBe(true);
+    expect(result[6.0].length).toBeGreaterThan(0);
+    for (const c of result[6.0]) {
       expect(c).toHaveProperty('hose');
-      expect(c).toHaveProperty('matchedPeaks');
-      expect(c).toHaveProperty('score');
-      expect(typeof c.score).toBe('number');
-      expect(c.matchedPeaks).toBeGreaterThanOrEqual(1);
+      expect(c).toHaveProperty('shift');
+      expect(c).toHaveProperty('error');
+      expect(typeof c.hose).toBe('string');
+      expect(typeof c.shift).toBe('number');
+      expect(c.error).toBeLessThanOrEqual(3.0);
     }
   });
 
-  test('results are sorted by score descending', async () => {
+  test('results are sorted by error ascending per peak', async () => {
     const result = await estimateFromSpectra({
-      nucleus: '13C',
-      peaks: [14.0, 128.0],
+      peaks: [128.0],
       tolerance: 3.0,
-      minMatches: 1,
     });
-    for (let i = 1; i < result.length; i++) {
-      expect(result[i].score).toBeLessThanOrEqual(result[i - 1].score);
+    const entries = result[128.0];
+    for (let i = 1; i < entries.length; i++) {
+      expect(entries[i].error).toBeGreaterThanOrEqual(entries[i - 1].error);
     }
   });
 
-  test('respects maxResults', async () => {
+  test('respects maxResults per peak', async () => {
     const result = await estimateFromSpectra({
-      nucleus: '13C',
       peaks: [128.0],
       tolerance: 5.0,
-      minMatches: 1,
       maxResults: 3,
     });
-    expect(result.length).toBeLessThanOrEqual(3);
+    expect(result[128.0].length).toBeLessThanOrEqual(3);
+  });
+
+  test('returns results for multiple peaks', async () => {
+    const result = await estimateFromSpectra({
+      peaks: [14.0, 128.0],
+      tolerance: 3.0,
+    });
+    expect(result[14.0]).toBeDefined();
+    expect(result[128.0]).toBeDefined();
+    expect(result[14.0].length).toBeGreaterThan(0);
+    expect(result[128.0].length).toBeGreaterThan(0);
   });
 });
