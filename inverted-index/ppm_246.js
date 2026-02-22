@@ -1,0 +1,1 @@
+export default [["=SCS(,CCN,C/H=C,HHH,=&,=&C/\\H|H,*C*C)",246.7],["=SCS(,CCN,C/H=C,HHH,=&,=&C/HH,*C*C),H,H,*C,*C/",246.7],["=SCS(,CCN,C/H=C,HHH,=&,=&C/\\H|H,*C*C),H,H,*C,*C/,H,H,*C,*&/",246.7],["=SCS(,CCN,C/H=C,HHH,=&,=&C/HH,*C*C)",246.7],["=SCS(,CCN,C/H=C,HHH,=&,=&C/\\H|H,*C*C),H,H,*C,*C/",246.7],["=SCS(,CCN,C/H=C,HHH,=&,=&C/HH,*C*C),H,H,*C,*C/,H,H,*C,*&/",246.7]];

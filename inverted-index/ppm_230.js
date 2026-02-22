@@ -1,0 +1,1 @@
+export default [["=SCS(,HHH,C/HCC/HCO,HON)HC&,C,&,CC/HHO,=OC,H=C,=ON/",230.1],["=SCS(,HHH,C/@HCC/@HOC,@NOH)",230.1],["=SCS(,HHH,C/@HCC/@HOC,@NOH)C,@H&C,CC,&/=OC,HHO,H=C,=ON/",230.1],["=SCS(,HHH,C/@HCC/",230.1],["=SCS(,HHH,C/HCC/HCO,HON)",230.1],["=SCS(,HHH,C/HCC/HCO,HON)HC&,C,&,CC/",230.1],["=SCS(,HHH,C/HCC/",230.1],["=SCS(,HHH,C/@HCC/@HOC,@NOH)C,@H&C,CC,&/",230.1]];

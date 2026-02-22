@@ -1,0 +1,1 @@
+export default [["=OCQ(,HHH,CCC/HHH,HHH,HHH/)/",248.8],["=OCQ(,HHH,CCC/",248.8],["=OCQ(",248.8],["=OCQ(,HHH,CCC/HHH,HHH,HHH/)//",248.8],["=OCQ(,HHH,CCC/HHH,HHH,HHH/)",248.8],["=OCQ(,HHH,CCC/HHH,HHH,HHH/",248.8]];

@@ -206,8 +206,25 @@
     </div>
 
     <script src="https://unpkg.com/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
+    <!-- Tab switching in a separate non-module script so it works even if CDN import fails -->
+    <script>
+        (function() {
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            window.switchTab = function(tabName) {
+                tabBtns.forEach(function(b) { b.classList.toggle('active', b.dataset.tab === tabName); });
+                tabContents.forEach(function(c) { c.classList.toggle('active', c.id === 'tab-' + tabName); });
+                var url = new URL(window.location);
+                url.searchParams.set('tab', tabName);
+                history.replaceState(null, '', url);
+            };
+            tabBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() { window.switchTab(btn.dataset.tab); });
+            });
+        })();
+    </script>
     <script type="module">
-        import { lookupNmrShifts, estimateFromSpectra, clearEstimateCache } from 'https://unpkg.com/vamos-hose@1.2.0/index.js';
+        import { lookupNmrShifts, estimateFromSpectra, clearEstimateCache } from './index.js';
 
         let smilesDrawer;
         function initSmilesDrawer() {
@@ -216,22 +233,6 @@
             }
         }
         window.addEventListener('load', initSmilesDrawer);
-
-        // ── Tab switching ─────────────────────────────────────────
-        const tabBtns = document.querySelectorAll('.tab-btn');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        function switchTab(tabName) {
-            tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
-            tabContents.forEach(c => c.classList.toggle('active', c.id === 'tab-' + tabName));
-            const url = new URL(window.location);
-            url.searchParams.set('tab', tabName);
-            history.replaceState(null, '', url);
-        }
-
-        tabBtns.forEach(btn => {
-            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-        });
 
         // ── Shared utilities ──────────────────────────────────────
         function showSpinner(outputEl, text) {
