@@ -1,7 +1,8 @@
-import { computeWeightedAvg, fetchWithRetry, withTimeout, IMPORT_TIMEOUT_MS } from './database.js';
+import { computeWeightedAvg, fetchWithRetry } from './database.js';
 import { MinHeap } from './min-heap.js';
 
 const NUM_PPM_BUCKETS = 250;
+const MAX_CONCURRENT = 6;
 
 /**
  * Resolve the base URL for inverted-index/ relative to this module.
@@ -11,34 +12,66 @@ const INDEX_BASE = new URL('../inverted-index/', import.meta.url).href;
 /** Cache of loaded PPM files: ppm -> array of [hoseCode, shift] */
 const _ppmCache = new Map();
 
+/** In-flight promises to avoid duplicate concurrent loads */
+const _inflightPpm = new Map();
+
 /**
  * Load a single PPM index file by bucket number.
- * Tries dynamic import() first; falls back to fetch() + Function eval.
+ * Uses fetch() + JSON parse (not import()) to avoid SyntaxError on CDN 503s.
  *
  * @param {number} ppm - integer ppm bucket (0-249)
  * @returns {Promise<Array<[string, number]>>} array of [hoseCode, shift]
  */
 async function loadPpmFile(ppm) {
   if (_ppmCache.has(ppm)) return _ppmCache.get(ppm);
+  if (_inflightPpm.has(ppm)) return _inflightPpm.get(ppm);
 
+  const promise = _doLoadPpm(ppm);
+  _inflightPpm.set(ppm, promise);
+  try {
+    return await promise;
+  } finally {
+    _inflightPpm.delete(ppm);
+  }
+}
+
+async function _doLoadPpm(ppm) {
   const fileName = `ppm_${String(ppm).padStart(3, '0')}.js`;
   const fileUrl = INDEX_BASE + fileName;
 
-  let data;
-  try {
-    const mod = await withTimeout(import(fileUrl), IMPORT_TIMEOUT_MS);
-    data = mod.default;
-  } catch {
-    const res = await fetchWithRetry(fileUrl);
-    const code = await res.text();
-    const match = code.match(/export\s+default\s+/);
-    if (!match) throw new Error(`Invalid PPM file format: ${fileName}`);
-    // eslint-disable-next-line no-new-func
-    data = new Function(`return (${code.slice(match.index + match[0].length)})`)();
-  }
+  const res = await fetchWithRetry(fileUrl);
+  const code = await res.text();
+  const match = code.match(/export\s+default\s+/);
+  if (!match) throw new Error(`Invalid PPM file format: ${fileName}`);
+  // Strip trailing semicolons/whitespace before wrapping in return()
+  const jsonPart = code.slice(match.index + match[0].length).replace(/;\s*$/, '');
+  // eslint-disable-next-line no-new-func
+  const data = new Function(`return (${jsonPart})`)();
 
   _ppmCache.set(ppm, data);
   return data;
+}
+
+/**
+ * Load multiple PPM files with concurrency limit to avoid CDN rate limits.
+ */
+async function loadPpmFilesBatch(ppmIndices) {
+  const results = new Array(ppmIndices.length);
+  let idx = 0;
+
+  async function worker() {
+    while (idx < ppmIndices.length) {
+      const i = idx++;
+      results[i] = await loadPpmFile(ppmIndices[i]);
+    }
+  }
+
+  const workers = [];
+  for (let w = 0; w < Math.min(MAX_CONCURRENT, ppmIndices.length); w++) {
+    workers.push(worker());
+  }
+  await Promise.all(workers);
+  return results;
 }
 
 /**
@@ -78,10 +111,10 @@ export async function estimateFromSpectra(options = {}) {
     const lo = Math.max(0, Math.floor(peak - tolerance));
     const hi = Math.min(NUM_PPM_BUCKETS - 1, Math.floor(peak + tolerance));
 
-    // Load relevant PPM files in parallel
+    // Load relevant PPM files with concurrency limit
     const ppmIndices = [];
     for (let p = lo; p <= hi; p++) ppmIndices.push(p);
-    const ppmFiles = await Promise.all(ppmIndices.map(loadPpmFile));
+    const ppmFiles = await loadPpmFilesBatch(ppmIndices);
 
     // Use a min-heap (max-heap internally) to keep top N by smallest error
     const heap = new MinHeap(maxResults);

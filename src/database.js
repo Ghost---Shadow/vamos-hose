@@ -86,8 +86,9 @@ export async function loadChunk(idx) {
         const code = await res.text();
         const match = code.match(/export\s+default\s+/);
         if (!match) throw new Error(`Invalid chunk format: ${chunkName}`);
+        const jsonPart = code.slice(match.index + match[0].length).replace(/;\s*$/, '');
         // eslint-disable-next-line no-new-func
-        data = new Function(`return (${code.slice(match.index + match[0].length)})`)();
+        data = new Function(`return (${jsonPart})`)();
       }
       _chunkCache.set(idx, data);
       return data;
