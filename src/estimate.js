@@ -1,4 +1,4 @@
-import { computeWeightedAvg, fetchWithRetry } from './database.js';
+import { computeWeightedAvg, fetchWithRetry, queryHose } from './database.js';
 import { MinHeap } from './min-heap.js';
 
 const NUM_PPM_BUCKETS = 250;
@@ -79,6 +79,41 @@ async function loadPpmFilesBatch(ppmIndices) {
  */
 export function clearEstimateCache() {
   _ppmCache.clear();
+}
+
+/**
+ * Enrich reverse-lookup results with SMILES from the chunk database.
+ * Takes top-1 match per peak, loads chunks via queryHose, attaches SMILES.
+ *
+ * @param {Object} results - output from estimateFromSpectra
+ * @returns {Promise<Object>} map from peak to { hose, shift, error, smiles }
+ */
+export async function resolveHoseSmiles(results) {
+  const enriched = {};
+  const lookups = [];
+
+  for (const [peak, matches] of Object.entries(results)) {
+    if (!matches || matches.length === 0) {
+      enriched[peak] = null;
+      continue;
+    }
+    const best = matches[0];
+    enriched[peak] = { ...best, smiles: null };
+    lookups.push({ peak, hose: best.hose });
+  }
+
+  await Promise.all(lookups.map(async ({ peak, hose }) => {
+    try {
+      const entry = await queryHose(hose);
+      if (entry && entry.smiles) {
+        enriched[peak].smiles = entry.smiles;
+      }
+    } catch {
+      // chunk load failed; smiles stays null
+    }
+  }));
+
+  return enriched;
 }
 
 /**
