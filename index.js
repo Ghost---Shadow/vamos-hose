@@ -4,3 +4,5 @@ export { estimateFromSpectra, resolveHoseSmiles, clearEstimateCache } from './sr
 export { smilesToHoseCodes } from './src/smiles-to-hose.js';
 export { generateHoseCode } from './src/hose-generator.js';
 export { clearCache } from './src/database.js';
+
+export { identifyMolecule, computeLoss } from './src/identify.js';
