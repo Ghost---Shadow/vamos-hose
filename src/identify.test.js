@@ -3,6 +3,7 @@ import { computeLoss, identifyWorstAtoms, identifyMolecule, predictShiftsWithAto
 import {
   cloneMolecule, tryMutation,
   enumerateSubstitutions, enumerateBondChanges, enumerateAdditions, enumerateRemovals,
+  enumerateRingClosures, enumerateFragmentAdditions,
   enumerateAllMutations, getAllHeavyAtomIndices, getAllCarbonIndices,
 } from './mutate.js';
 
@@ -169,6 +170,47 @@ describe('mutate.js', () => {
     test('does not remove ring atoms from cyclohexane', () => {
       const muts = enumerateRemovals('C1CCCCC1', [0, 1, 2]);
       expect(muts).toEqual([]);
+    });
+  });
+
+  describe('enumerateRingClosures', () => {
+    test('propane can form cyclopropane', () => {
+      const muts = enumerateRingClosures('CCC', [0, 1, 2]);
+      expect(muts.length).toBeGreaterThanOrEqual(1);
+      expect(muts.some(m => m.description.includes('ring closure'))).toBe(true);
+    });
+
+    test('methane produces no ring closures', () => {
+      const muts = enumerateRingClosures('C', [0]);
+      expect(muts).toEqual([]);
+    });
+
+    test('already-saturated atoms produce no closures', () => {
+      // neopentane C(C)(C)(C)C — central carbon is fully saturated
+      const muts = enumerateRingClosures('CC(C)(C)C', [1]);
+      expect(muts).toEqual([]);
+    });
+  });
+
+  describe('enumerateFragmentAdditions', () => {
+    test('methane gets fragment additions', () => {
+      const muts = enumerateFragmentAdditions('C', [0]);
+      expect(muts.length).toBeGreaterThanOrEqual(3); // methyl, ethyl, hydroxyl, amino, carbonyl, carboxyl
+      const labels = muts.map(m => m.description);
+      expect(labels.some(l => l.includes('methyl'))).toBe(true);
+      expect(labels.some(l => l.includes('hydroxyl'))).toBe(true);
+    });
+
+    test('saturated atom gets no additions', () => {
+      const muts = enumerateFragmentAdditions('CC(C)(C)C', [1]);
+      expect(muts).toEqual([]);
+    });
+
+    test('carbonyl fragment produces C=O', () => {
+      const muts = enumerateFragmentAdditions('C', [0]);
+      const carbonyl = muts.find(m => m.description.includes('carbonyl'));
+      expect(carbonyl).toBeDefined();
+      expect(carbonyl.smiles).toContain('O');
     });
   });
 

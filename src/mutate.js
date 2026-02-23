@@ -189,6 +189,96 @@ export function enumerateRemovals(smiles, atomIndices) {
 }
 
 /**
+ * Enumerate ring closure mutations — add a bond between two non-adjacent atoms.
+ * Only tries atoms with free valence that aren't already bonded.
+ * @param {string} smiles
+ * @param {number[]} atomIndices - atoms to focus mutations on
+ * @returns {Array<{ smiles: string, description: string }>}
+ */
+export function enumerateRingClosures(smiles, atomIndices) {
+  const results = [];
+  const mol = OCL.Molecule.fromSmiles(smiles);
+  mol.ensureHelperArrays(OCL.Molecule.cHelperNeighbours || 1);
+
+  const totalAtoms = mol.getAllAtoms();
+
+  // Build adjacency set for quick neighbor checks
+  const adjacency = new Set();
+  for (let b = 0; b < mol.getAllBonds(); b++) {
+    const a1 = mol.getBondAtom(0, b);
+    const a2 = mol.getBondAtom(1, b);
+    adjacency.add(`${a1}-${a2}`);
+    adjacency.add(`${a2}-${a1}`);
+  }
+
+  for (const idx of atomIndices) {
+    if (idx >= totalAtoms) continue;
+    if (mol.getAtomicNo(idx) <= 1) continue;
+    if (mol.getFreeValence(idx) <= 0) continue;
+
+    // Try closing a ring to any other heavy atom with free valence
+    for (let j = 0; j < totalAtoms; j++) {
+      if (j === idx) continue;
+      if (mol.getAtomicNo(j) <= 1) continue;
+      if (mol.getFreeValence(j) <= 0) continue;
+      if (adjacency.has(`${idx}-${j}`)) continue; // already bonded
+
+      const newSmiles = tryMutation(smiles, (m) => {
+        m.addBond(idx, j);
+      });
+      if (newSmiles && newSmiles !== smiles) {
+        results.push({
+          smiles: newSmiles,
+          description: `ring closure: bond ${idx}-${j}`,
+        });
+      }
+    }
+  }
+  return results;
+}
+
+// Common fragments as SMILES with attachment point
+const FRAGMENT_SMARTS = [
+  { smiles: 'C',   atomicNo: 6,  label: 'methyl',    build: (m, anchor) => { const a = m.addAtom(6); m.addBond(anchor, a); } },
+  { smiles: 'CC',  atomicNo: 6,  label: 'ethyl',     build: (m, anchor) => { const a = m.addAtom(6); m.addBond(anchor, a); const b = m.addAtom(6); m.addBond(a, b); } },
+  { smiles: 'O',   atomicNo: 8,  label: 'hydroxyl',  build: (m, anchor) => { const a = m.addAtom(8); m.addBond(anchor, a); } },
+  { smiles: 'N',   atomicNo: 7,  label: 'amino',     build: (m, anchor) => { const a = m.addAtom(7); m.addBond(anchor, a); } },
+  { smiles: 'C=O', atomicNo: 6,  label: 'carbonyl',  build: (m, anchor) => { const c = m.addAtom(6); m.addBond(anchor, c); const o = m.addAtom(8); const b = m.addBond(c, o); m.setBondOrder(b, 2); } },
+  { smiles: 'C(O)=O', atomicNo: 6, label: 'carboxyl', build: (m, anchor) => { const c = m.addAtom(6); m.addBond(anchor, c); const o1 = m.addAtom(8); m.addBond(c, o1); const o2 = m.addAtom(8); const b = m.addBond(c, o2); m.setBondOrder(b, 2); } },
+];
+
+/**
+ * Enumerate fragment addition mutations — add common functional groups in one step.
+ * @param {string} smiles
+ * @param {number[]} atomIndices - atoms to focus mutations on
+ * @returns {Array<{ smiles: string, description: string }>}
+ */
+export function enumerateFragmentAdditions(smiles, atomIndices) {
+  const results = [];
+  const mol = OCL.Molecule.fromSmiles(smiles);
+  mol.ensureHelperArrays(OCL.Molecule.cHelperNeighbours || 1);
+
+  for (const idx of atomIndices) {
+    if (idx >= mol.getAllAtoms()) continue;
+    if (mol.getAtomicNo(idx) <= 1) continue;
+    if (mol.getFreeValence(idx) <= 0) continue;
+
+    for (const frag of FRAGMENT_SMARTS) {
+      const newSmiles = tryMutation(smiles, (m) => {
+        frag.build(m, idx);
+      });
+      if (newSmiles && newSmiles !== smiles) {
+        results.push({
+          smiles: newSmiles,
+          description: `add ${frag.label} to atom ${idx}`,
+        });
+      }
+    }
+  }
+  return results;
+}
+
+/**
  * Enumerate all single-step mutations for given atom indices, deduplicated by SMILES.
  * @param {string} smiles
  * @param {number[]} atomIndices - atoms to focus mutations on
@@ -200,6 +290,8 @@ export function enumerateAllMutations(smiles, atomIndices) {
     ...enumerateBondChanges(smiles, atomIndices),
     ...enumerateAdditions(smiles, atomIndices),
     ...enumerateRemovals(smiles, atomIndices),
+    ...enumerateRingClosures(smiles, atomIndices),
+    ...enumerateFragmentAdditions(smiles, atomIndices),
   ];
 
   // Deduplicate by canonical SMILES

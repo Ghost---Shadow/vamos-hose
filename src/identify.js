@@ -228,16 +228,25 @@ export async function identifyMolecule(targetShifts, options = {}) {
 
     if (candidates.length === 0) break;
 
-    // Evaluate all candidates
+    // Evaluate all candidates in parallel (batched to avoid memory spikes)
     let bestCandidate = null;
     let bestLoss = currentLoss.loss;
 
-    for (const candidate of candidates) {
-      try {
-        const pred = await predictShiftsWithAtomIndices(candidate.smiles);
-        const shifts = pred.map(p => p.shift);
-        const loss = computeLoss(shifts, targetShifts, lossOpts);
+    const BATCH_SIZE = 32;
+    for (let bStart = 0; bStart < candidates.length; bStart += BATCH_SIZE) {
+      const batch = candidates.slice(bStart, bStart + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(async (candidate) => {
+          const pred = await predictShiftsWithAtomIndices(candidate.smiles);
+          const shifts = pred.map(p => p.shift);
+          const loss = computeLoss(shifts, targetShifts, lossOpts);
+          return { candidate, pred, shifts, loss };
+        })
+      );
 
+      for (const result of results) {
+        if (result.status !== 'fulfilled') continue;
+        const { candidate, pred, shifts, loss } = result.value;
         if (loss.loss < bestLoss) {
           bestLoss = loss.loss;
           bestCandidate = {
@@ -248,8 +257,6 @@ export async function identifyMolecule(targetShifts, options = {}) {
             lossResult: loss,
           };
         }
-      } catch {
-        // Skip candidates that fail prediction
       }
     }
 
