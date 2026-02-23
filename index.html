@@ -126,6 +126,25 @@
         .summary-row { display: flex; justify-content: space-between; padding: 0.25rem 0; }
         .summary-label { color: #9cdcfe; }
         .summary-value { color: #b5cea8; font-family: 'Consolas', monospace; }
+        .peak-card {
+            background: #252526; border: 1px solid #3e3e42; border-radius: 6px;
+            padding: 1rem; margin-bottom: 1rem;
+        }
+        .peak-card-header {
+            display: flex; justify-content: space-between; align-items: baseline;
+            margin-bottom: 0.75rem;
+        }
+        .peak-card-header .peak-label { font-weight: 700; color: #9cdcfe; font-size: 1rem; }
+        .peak-card-header .peak-meta { color: #858585; font-size: 0.85rem; font-family: 'Consolas', monospace; }
+        .peak-mol-container {
+            background: #fff; border: 1px solid #3e3e42; border-radius: 4px;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 150px; margin-bottom: 0.75rem;
+        }
+        .peak-mol-container svg { max-width: 100%; height: auto; }
+        .peak-details { font-size: 0.85rem; }
+        .peak-details .detail-row { display: flex; justify-content: space-between; padding: 0.2rem 0; }
+        .peak-no-structure { color: #858585; font-style: italic; text-align: center; padding: 2rem 1rem; }
         @media (max-width: 768px) {
             .container, .tab-content { flex-direction: column; }
             .input-panel { max-width: none; border-right: none; border-bottom: 1px solid #3e3e42; max-height: 40vh; }
@@ -182,10 +201,6 @@
                         <label for="tolerance-input">Tolerance (ppm)</label>
                         <input type="number" id="tolerance-input" value="2.0" min="0.1" max="10" step="0.1">
                     </div>
-                    <div class="param-group">
-                        <label for="max-results-input">Results per peak</label>
-                        <input type="number" id="max-results-input" value="10" min="1" max="50" step="1">
-                    </div>
                 </div>
                 <button class="predict-btn" id="reverse-predict-btn">Search Database</button>
                 <div class="examples">
@@ -198,7 +213,7 @@
             </div>
         </div>
         <div class="panel">
-            <div class="panel-header">Per-Peak HOSE Matches</div>
+            <div class="panel-header">Per-Peak Structure Matches</div>
             <div class="output-content" id="reverse-output">
                 <div class="summary"><p style="color:#858585; text-align:center;">Enter observed 13C chemical shifts and click Search Database</p></div>
             </div>
@@ -224,7 +239,7 @@
         })();
     </script>
     <script type="module">
-        import { lookupNmrShifts, estimateFromSpectra, clearEstimateCache } from './index.js';
+        import { lookupNmrShifts, estimateFromSpectra, resolveHoseSmiles, clearEstimateCache } from './index.js';
 
         let smilesDrawer;
         function initSmilesDrawer() {
@@ -372,10 +387,9 @@
             });
         });
 
-        // ── Reverse tab: Spectra → HOSE ──────────────────────────
+        // ── Reverse tab: Spectra → Structures ─────────────────────
         const peaksInput = document.getElementById('peaks-input');
         const toleranceInput = document.getElementById('tolerance-input');
-        const maxResultsInput = document.getElementById('max-results-input');
         const reverseOutput = document.getElementById('reverse-output');
         const reversePredictBtn = document.getElementById('reverse-predict-btn');
 
@@ -393,23 +407,24 @@
             }
 
             const tolerance = parseFloat(toleranceInput.value) || 2.0;
-            const maxResults = parseInt(maxResultsInput.value) || 10;
 
-            // Update URL
             const url = new URL(window.location);
             url.searchParams.set('peaks', peaks.join(','));
             url.searchParams.set('tolerance', tolerance);
-            url.searchParams.delete('minMatches');
             history.replaceState(null, '', url);
 
             showSpinner(reverseOutput, 'Searching inverted index\u2026');
 
             try {
-                const result = await estimateFromSpectra({ peaks, tolerance, maxResults });
-                const peakKeys = Object.keys(result).map(Number);
+                // Phase 1: fast PPM-only search (top 1 per peak)
+                const raw = await estimateFromSpectra({ peaks, tolerance, maxResults: 1 });
 
-                const totalMatches = peakKeys.reduce((sum, k) => sum + result[k].length, 0);
-                if (totalMatches === 0) {
+                // Phase 2: resolve SMILES from chunk database
+                showSpinner(reverseOutput, 'Loading structures\u2026');
+                const enriched = await resolveHoseSmiles(raw);
+
+                const matched = peaks.filter(p => enriched[p] !== null);
+                if (matched.length === 0) {
                     reverseOutput.innerHTML = '<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">No matching HOSE codes found. Try increasing tolerance.</p></div>';
                     return;
                 }
@@ -417,44 +432,58 @@
                 let html = '';
 
                 // Input spectrum preview
-                const peakShifts = peaks.map(p => ({ shift: p }));
                 html += '<div class="spectrum-container" id="reverse-spectrum"></div>';
 
                 // Summary
                 html += '<div class="summary">';
                 html += `<div class="summary-row"><span class="summary-label">Input peaks</span><span class="summary-value">${peaks.length}</span></div>`;
-                html += `<div class="summary-row"><span class="summary-label">Total matches</span><span class="summary-value">${totalMatches}</span></div>`;
+                html += `<div class="summary-row"><span class="summary-label">Structures resolved</span><span class="summary-value">${matched.filter(p => enriched[p] && enriched[p].smiles).length} / ${peaks.length}</span></div>`;
                 html += `<div class="summary-row"><span class="summary-label">Tolerance</span><span class="summary-value">\u00b1${tolerance} ppm</span></div>`;
                 html += '</div>';
 
-                // Per-peak results
-                for (const peak of peaks) {
-                    const matches = result[peak] || [];
-                    html += `<div class="summary" style="margin-top:12px;">`;
-                    html += `<div class="summary-row"><span class="summary-label" style="font-weight:700;">Peak ${peak} ppm</span><span class="summary-value">${matches.length} match${matches.length !== 1 ? 'es' : ''}</span></div>`;
+                // Per-peak cards with molecule diagrams
+                for (let i = 0; i < peaks.length; i++) {
+                    const peak = peaks[i];
+                    const m = enriched[peak];
+                    const svgId = `rev-mol-${i}`;
+
+                    html += '<div class="peak-card">';
+                    html += '<div class="peak-card-header">';
+                    html += `<span class="peak-label">${peak.toFixed(1)} ppm</span>`;
+                    if (m) {
+                        html += `<span class="peak-meta">DB: ${m.shift.toFixed(1)} ppm | \u00b1${m.error.toFixed(2)}</span>`;
+                    } else {
+                        html += '<span class="peak-meta" style="color:#f48771;">No match</span>';
+                    }
                     html += '</div>';
 
-                    if (matches.length > 0) {
-                        html += '<table class="results-table"><thead><tr><th>#</th><th>HOSE Code</th><th>DB Shift</th><th>Error</th></tr></thead><tbody>';
-                        matches.forEach((m, i) => {
-                            const errPct = Math.min(100, Math.round((m.error / tolerance) * 100));
-                            const barW = Math.max(2, 100 - errPct);
-                            html += `<tr>`;
-                            html += `<td>${i + 1}</td>`;
-                            html += `<td class="smiles-cell" title="${m.hose}">${m.hose}</td>`;
-                            html += `<td class="shift-value">${m.shift.toFixed(1)}</td>`;
-                            html += `<td><span class="score-bar" style="width:${barW}px"></span><span class="score-text">\u00b1${m.error.toFixed(2)}</span></td>`;
-                            html += `</tr>`;
-                        });
-                        html += '</tbody></table>';
+                    if (m && m.smiles) {
+                        html += `<div class="peak-mol-container"><svg id="${svgId}" width="300" height="150"></svg></div>`;
+                        html += '<div class="peak-details">';
+                        html += `<div class="detail-row"><span class="summary-label">SMILES</span><span class="smiles-cell" title="${m.smiles}">${m.smiles}</span></div>`;
+                        html += `<div class="detail-row"><span class="summary-label">HOSE</span><span class="hose-code" title="${m.hose}">${m.hose}</span></div>`;
+                        html += '</div>';
+                    } else if (m) {
+                        html += '<div class="peak-mol-container"><div class="peak-no-structure">Structure unavailable</div></div>';
+                        html += '<div class="peak-details">';
+                        html += `<div class="detail-row"><span class="summary-label">HOSE</span><span class="hose-code" title="${m.hose}">${m.hose}</span></div>`;
+                        html += '</div>';
                     }
+
+                    html += '</div>';
                 }
 
                 reverseOutput.innerHTML = html;
 
                 // Draw input spectrum
                 const specEl = document.getElementById('reverse-spectrum');
-                if (specEl) drawLorentzianSVG(specEl, peakShifts, { title: 'Input Peaks' });
+                if (specEl) drawLorentzianSVG(specEl, peaks.map(p => ({ shift: p })), { title: 'Input Peaks' });
+
+                // Draw molecules after DOM insertion
+                for (let i = 0; i < peaks.length; i++) {
+                    const m = enriched[peaks[i]];
+                    if (m && m.smiles) drawMolecule(m.smiles, `rev-mol-${i}`);
+                }
 
             } catch (err) {
                 reverseOutput.innerHTML = `<div class="summary" style="border-color:#be1100;"><p style="color:#f48771;">Error: ${err.message}</p></div>`;
