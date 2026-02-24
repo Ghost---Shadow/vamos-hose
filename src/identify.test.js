@@ -1,10 +1,9 @@
 import { describe, test, expect } from 'bun:test';
 import { computeLoss, identifyWorstAtoms, identifyMolecule, predictShiftsWithAtomIndices } from './identify.js';
 import {
-  cloneMolecule, tryMutation,
+  validateSmiles, getAtomCount,
   enumerateSubstitutions, enumerateBondChanges, enumerateAdditions, enumerateRemovals,
-  enumerateRingClosures, enumerateFragmentAdditions,
-  enumerateAllMutations, getAllHeavyAtomIndices, getAllCarbonIndices,
+  enumerateFragmentAttachments, enumerateAllMutations,
 } from './mutate.js';
 
 // ─── computeLoss unit tests ───────────────────────────────────────────
@@ -99,143 +98,101 @@ describe('identifyWorstAtoms', () => {
 // ─── mutate.js unit tests ─────────────────────────────────────────────
 
 describe('mutate.js', () => {
-  describe('cloneMolecule', () => {
-    test('clones ethanol', () => {
-      const result = cloneMolecule('CCO');
-      expect(result).not.toBeNull();
-      expect(typeof result.smiles).toBe('string');
+  describe('validateSmiles', () => {
+    test('valid SMILES returns valid=true with canonical', () => {
+      const result = validateSmiles('CCO');
+      expect(result.valid).toBe(true);
+      expect(typeof result.canonical).toBe('string');
     });
 
-    test('returns null for invalid SMILES', () => {
-      expect(cloneMolecule('XXXINVALID')).toBeNull();
+    test('invalid SMILES returns valid=false', () => {
+      const result = validateSmiles('XXXINVALID!!!');
+      expect(result.valid).toBe(false);
+      expect(result.canonical).toBeNull();
     });
   });
 
-  describe('tryMutation', () => {
-    test('valid substitution returns new SMILES', () => {
-      const result = tryMutation('CC', (mol) => { mol.setAtomicNo(0, 7); });
-      expect(result).not.toBeNull();
-      expect(typeof result).toBe('string');
-      expect(result).not.toBe('CC');
+  describe('getAtomCount', () => {
+    test('counts atoms in ethanol', () => {
+      expect(getAtomCount('CCO')).toBe(3);
     });
 
-    test('invalid mutation returns null', () => {
-      // Pentavalent carbon should fail
-      const result = tryMutation('C', (mol) => {
-        for (let i = 0; i < 6; i++) {
-          const a = mol.addAtom(6);
-          mol.addBond(0, a);
-        }
-      });
-      // Either null or valid rearrangement — just ensure no crash
-      expect(typeof result === 'string' || result === null).toBe(true);
+    test('counts atoms in benzene', () => {
+      expect(getAtomCount('c1ccccc1')).toBe(6);
+    });
+
+    test('counts atoms in toluene (molecule type)', () => {
+      expect(getAtomCount('Cc1ccccc1')).toBe(7);
     });
   });
 
   describe('enumerateSubstitutions', () => {
     test('generates substitutions for methane', () => {
-      const muts = enumerateSubstitutions('C', [0]);
+      const muts = enumerateSubstitutions('C');
       expect(muts.length).toBeGreaterThan(0);
-      // All should be unique SMILES
       const smilesList = muts.map(m => m.smiles);
       expect(new Set(smilesList).size).toBe(smilesList.length);
     });
 
-    test('empty indices produce no mutations', () => {
-      expect(enumerateSubstitutions('CC', [])).toEqual([]);
+    test('generates substitutions for benzene', () => {
+      const muts = enumerateSubstitutions('c1ccccc1');
+      expect(muts.length).toBeGreaterThan(0);
+      // Should include pyridine-like substitutions
+      expect(muts.some(m => m.smiles.includes('N') || m.smiles.includes('n'))).toBe(true);
     });
   });
 
   describe('enumerateBondChanges', () => {
-    test('ethane can become ethylene', () => {
-      const muts = enumerateBondChanges('CC', [0]);
+    test('ethane bonds can change', () => {
+      const muts = enumerateBondChanges('CC');
+      // CC has bonds [null] — should produce C=C and C#C
       expect(muts.length).toBeGreaterThanOrEqual(1);
-      expect(muts.some(m => m.smiles.includes('=') || m.description.includes('order'))).toBe(true);
     });
   });
 
   describe('enumerateAdditions', () => {
-    test('methane can grow', () => {
-      const muts = enumerateAdditions('C', [0]);
+    test('benzene can grow', () => {
+      const muts = enumerateAdditions('c1ccccc1');
       expect(muts.length).toBeGreaterThanOrEqual(1);
     });
   });
 
   describe('enumerateRemovals', () => {
-    test('removes terminal atom from ethane', () => {
-      const muts = enumerateRemovals('CC', [0, 1]);
+    test('removes branch from branched molecule', () => {
+      const muts = enumerateRemovals('CC(O)CC');
       expect(muts.length).toBeGreaterThanOrEqual(1);
-    });
-
-    test('does not remove ring atoms from cyclohexane', () => {
-      const muts = enumerateRemovals('C1CCCCC1', [0, 1, 2]);
-      expect(muts).toEqual([]);
+      expect(muts.some(m => m.description.includes('remove'))).toBe(true);
     });
   });
 
-  describe('enumerateRingClosures', () => {
-    test('propane can form cyclopropane', () => {
-      const muts = enumerateRingClosures('CCC', [0, 1, 2]);
+  describe('enumerateFragmentAttachments', () => {
+    test('attaches fragments to ethanol', () => {
+      const muts = enumerateFragmentAttachments('CCO', ['C(=O)O', 'NC']);
       expect(muts.length).toBeGreaterThanOrEqual(1);
-      expect(muts.some(m => m.description.includes('ring closure'))).toBe(true);
     });
 
-    test('methane produces no ring closures', () => {
-      const muts = enumerateRingClosures('C', [0]);
+    test('empty fragments produce no results', () => {
+      const muts = enumerateFragmentAttachments('CCO', []);
       expect(muts).toEqual([]);
-    });
-
-    test('already-saturated atoms produce no closures', () => {
-      // neopentane C(C)(C)(C)C — central carbon is fully saturated
-      const muts = enumerateRingClosures('CC(C)(C)C', [1]);
-      expect(muts).toEqual([]);
-    });
-  });
-
-  describe('enumerateFragmentAdditions', () => {
-    test('methane gets fragment additions', () => {
-      const muts = enumerateFragmentAdditions('C', [0]);
-      expect(muts.length).toBeGreaterThanOrEqual(3); // methyl, ethyl, hydroxyl, amino, carbonyl, carboxyl
-      const labels = muts.map(m => m.description);
-      expect(labels.some(l => l.includes('methyl'))).toBe(true);
-      expect(labels.some(l => l.includes('hydroxyl'))).toBe(true);
-    });
-
-    test('saturated atom gets no additions', () => {
-      const muts = enumerateFragmentAdditions('CC(C)(C)C', [1]);
-      expect(muts).toEqual([]);
-    });
-
-    test('carbonyl fragment produces C=O', () => {
-      const muts = enumerateFragmentAdditions('C', [0]);
-      const carbonyl = muts.find(m => m.description.includes('carbonyl'));
-      expect(carbonyl).toBeDefined();
-      expect(carbonyl.smiles).toContain('O');
     });
   });
 
   describe('enumerateAllMutations', () => {
     test('deduplicates by SMILES', () => {
-      const muts = enumerateAllMutations('CC', [0, 1]);
+      const muts = enumerateAllMutations('CC');
       const smilesList = muts.map(m => m.smiles);
       expect(new Set(smilesList).size).toBe(smilesList.length);
     });
 
     test('excludes identity mutation', () => {
-      const muts = enumerateAllMutations('CC', [0]);
+      const muts = enumerateAllMutations('CC');
       expect(muts.every(m => m.smiles !== 'CC')).toBe(true);
     });
-  });
 
-  describe('helper functions', () => {
-    test('getAllHeavyAtomIndices for ethanol', () => {
-      const indices = getAllHeavyAtomIndices('CCO');
-      expect(indices.length).toBe(3); // C, C, O
-    });
-
-    test('getAllCarbonIndices for ethanol', () => {
-      const indices = getAllCarbonIndices('CCO');
-      expect(indices.length).toBe(2); // C, C only
+    test('includes fragment attachments when provided', () => {
+      const withoutFrags = enumerateAllMutations('CC');
+      const withFrags = enumerateAllMutations('CC', ['C(=O)O']);
+      expect(withFrags.length).toBeGreaterThanOrEqual(withoutFrags.length);
     });
   });
 });

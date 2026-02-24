@@ -1,336 +1,188 @@
-import OCL from 'openchemlib';
+import { normalize } from 'smiles-js';
 
-// Elements we may substitute between (atomic numbers)
-const SUBSTITUTION_ELEMENTS = [6, 7, 8, 16, 9, 17, 35]; // C, N, O, S, F, Cl, Br
+const SUBSTITUTION_ATOMS = ['C', 'c', 'N', 'n', 'O', 'o', 'S', 's', 'F', 'Cl', 'Br'];
+const ADDABLE_GROUPS = ['C', 'N', 'O'];
 
-// Elements we may add to a molecule
-const ADDABLE_ATOMS = [6, 7, 8]; // C, N, O
+// Match atom tokens in SMILES: bracket atoms, two-letter organics, single-letter organics
+const ATOM_RE = /\[[^\]]+\]|Br|Cl|[BCNOPSFIbcnosp]/;
 
-/**
- * Clone a molecule by round-tripping through SMILES.
- * @param {string} smiles
- * @returns {{ mol: OCL.Molecule, smiles: string } | null}
- */
-export function cloneMolecule(smiles) {
+function tryNormalize(smiles) {
+  try { return normalize(smiles); } catch { return null; }
+}
+
+function findAtomPositions(smiles) {
+  const re = new RegExp(ATOM_RE.source, 'g');
+  const positions = [];
+  let m;
+  while ((m = re.exec(smiles)) !== null) {
+    positions.push({ start: m.index, end: m.index + m[0].length, atom: m[0] });
+  }
+  return positions;
+}
+
+function dedup(results, canonical) {
+  const seen = new Set([canonical]);
+  return results.filter(r => {
+    if (seen.has(r.smiles)) return false;
+    seen.add(r.smiles);
+    return true;
+  });
+}
+
+export function validateSmiles(smiles) {
   try {
-    const mol = OCL.Molecule.fromSmiles(smiles);
-    const canonical = mol.toSmiles();
-    return { mol, smiles: canonical };
+    const canonical = normalize(smiles);
+    return { valid: true, canonical };
   } catch {
-    return null;
+    return { valid: false, canonical: null };
   }
 }
 
-/**
- * Apply a mutation function to a molecule, validate, return new SMILES or null.
- * @param {string} smiles - current molecule SMILES
- * @param {function(OCL.Molecule): void} mutateFn - mutation callback
- * @returns {string | null} new canonical SMILES if valid, null if chemically invalid
- */
-export function tryMutation(smiles, mutateFn) {
-  try {
-    const mol = OCL.Molecule.fromSmiles(smiles);
-    mutateFn(mol);
-    const newSmiles = mol.toSmiles();
-    // Re-parse to ensure consistency
-    OCL.Molecule.fromSmiles(newSmiles);
-    return newSmiles;
-  } catch {
-    return null;
-  }
+export function getAtomCount(smiles) {
+  return findAtomPositions(smiles).length;
 }
 
-/**
- * Enumerate atom substitution mutations for given atom indices.
- * @param {string} smiles
- * @param {number[]} atomIndices - atom indices to mutate
- * @returns {Array<{ smiles: string, description: string }>}
- */
-export function enumerateSubstitutions(smiles, atomIndices) {
+export function enumerateSubstitutions(smiles) {
+  const canonical = tryNormalize(smiles);
+  if (!canonical) return [];
   const results = [];
-  const mol = OCL.Molecule.fromSmiles(smiles);
+  const positions = findAtomPositions(canonical);
 
-  for (const idx of atomIndices) {
-    if (idx >= mol.getAllAtoms()) continue;
-    const currentNo = mol.getAtomicNo(idx);
-    if (currentNo <= 1) continue; // skip H
-
-    for (const targetNo of SUBSTITUTION_ELEMENTS) {
-      if (targetNo === currentNo) continue;
-      const newSmiles = tryMutation(smiles, (m) => {
-        m.setAtomicNo(idx, targetNo);
-      });
-      if (newSmiles && newSmiles !== smiles) {
-        results.push({
-          smiles: newSmiles,
-          description: `substitute atom ${idx}: Z=${currentNo} -> Z=${targetNo}`,
-        });
+  for (const pos of positions) {
+    for (const newAtom of SUBSTITUTION_ATOMS) {
+      if (newAtom === pos.atom) continue;
+      const s = canonical.slice(0, pos.start) + newAtom + canonical.slice(pos.end);
+      const norm = tryNormalize(s);
+      if (norm && norm !== canonical) {
+        results.push({ smiles: norm, description: `sub ${pos.atom}->${newAtom}` });
       }
     }
   }
-  return results;
+
+  return dedup(results, canonical);
 }
 
-/**
- * Enumerate bond order change mutations for bonds adjacent to given atoms.
- * @param {string} smiles
- * @param {number[]} atomIndices
- * @returns {Array<{ smiles: string, description: string }>}
- */
-export function enumerateBondChanges(smiles, atomIndices) {
+export function enumerateAdditions(smiles) {
+  const canonical = tryNormalize(smiles);
+  if (!canonical) return [];
   const results = [];
-  const mol = OCL.Molecule.fromSmiles(smiles);
-  mol.ensureHelperArrays(OCL.Molecule.cHelperNeighbours || 1);
+  const positions = findAtomPositions(canonical);
 
-  const triedBonds = new Set();
+  for (const pos of positions) {
+    for (const atom of ADDABLE_GROUPS) {
+      const s = canonical.slice(0, pos.end) + `(${atom})` + canonical.slice(pos.end);
+      const norm = tryNormalize(s);
+      if (norm && norm !== canonical) {
+        results.push({ smiles: norm, description: `add (${atom})` });
+      }
+    }
+  }
 
-  for (const idx of atomIndices) {
-    if (idx >= mol.getAllAtoms()) continue;
-    const connCount = mol.getConnAtoms(idx);
-    for (let i = 0; i < connCount; i++) {
-      const bondIdx = mol.getConnBond(idx, i);
-      if (triedBonds.has(bondIdx)) continue;
-      triedBonds.add(bondIdx);
+  return dedup(results, canonical);
+}
 
-      const currentOrder = mol.getBondOrder(bondIdx);
-      for (const targetOrder of [1, 2, 3]) {
-        if (targetOrder === currentOrder) continue;
-        const newSmiles = tryMutation(smiles, (m) => {
-          m.setBondOrder(bondIdx, targetOrder);
-        });
-        if (newSmiles && newSmiles !== smiles) {
-          results.push({
-            smiles: newSmiles,
-            description: `bond ${bondIdx}: order ${currentOrder} -> ${targetOrder}`,
-          });
+export function enumerateBondChanges(smiles) {
+  const canonical = tryNormalize(smiles);
+  if (!canonical) return [];
+  const results = [];
+
+  // Tokenize to find bond positions
+  const tokenRe = /\[[^\]]+\]|Br|Cl|[BCNOPSFIbcnosp]|[=#]|%\d{2}|\d|[().\/\\:\-]/g;
+  const tokens = [];
+  let m;
+  while ((m = tokenRe.exec(canonical)) !== null) {
+    tokens.push({ text: m[0], index: m.index, end: m.index + m[0].length });
+  }
+
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+
+    // Change or remove existing explicit bond
+    if (t.text === '=' || t.text === '#') {
+      for (const alt of ['=', '#', ''].filter(b => b !== t.text)) {
+        const s = canonical.slice(0, t.index) + alt + canonical.slice(t.end);
+        const norm = tryNormalize(s);
+        if (norm && norm !== canonical) {
+          results.push({ smiles: norm, description: `bond ${t.text}->${alt || 'single'}` });
+        }
+      }
+    }
+
+    // Insert bond between adjacent atom tokens
+    if (ATOM_RE.test(t.text) && i + 1 < tokens.length && ATOM_RE.test(tokens[i + 1].text)) {
+      for (const bond of ['=', '#']) {
+        const s = canonical.slice(0, t.end) + bond + canonical.slice(t.end);
+        const norm = tryNormalize(s);
+        if (norm && norm !== canonical) {
+          results.push({ smiles: norm, description: `bond single->${bond}` });
         }
       }
     }
   }
-  return results;
+
+  return dedup(results, canonical);
 }
 
-/**
- * Enumerate atom addition mutations. Adds a new atom bonded to atoms with free valence.
- * @param {string} smiles
- * @param {number[]} atomIndices
- * @returns {Array<{ smiles: string, description: string }>}
- */
-export function enumerateAdditions(smiles, atomIndices) {
+export function enumerateRemovals(smiles) {
+  const canonical = tryNormalize(smiles);
+  if (!canonical) return [];
   const results = [];
-  const mol = OCL.Molecule.fromSmiles(smiles);
-  mol.ensureHelperArrays(OCL.Molecule.cHelperNeighbours || 1);
 
-  for (const idx of atomIndices) {
-    if (idx >= mol.getAllAtoms()) continue;
-    if (mol.getAtomicNo(idx) <= 1) continue;
+  // Remove parenthesized branches
+  for (const match of canonical.matchAll(/\([^()]+\)/g)) {
+    const s = canonical.slice(0, match.index) + canonical.slice(match.index + match[0].length);
+    const norm = tryNormalize(s);
+    if (norm && norm !== canonical) {
+      results.push({ smiles: norm, description: `remove ${match[0]}` });
+    }
+  }
 
-    // Check free valence
-    const freeVal = mol.getFreeValence(idx);
-    if (freeVal <= 0) continue;
-
-    for (const atomicNo of ADDABLE_ATOMS) {
-      const newSmiles = tryMutation(smiles, (m) => {
-        const newIdx = m.addAtom(atomicNo);
-        m.addBond(idx, newIdx);
-      });
-      if (newSmiles && newSmiles !== smiles) {
-        results.push({
-          smiles: newSmiles,
-          description: `add Z=${atomicNo} to atom ${idx}`,
-        });
+  // Remove terminal atom (last atom if at end of string)
+  const positions = findAtomPositions(canonical);
+  if (positions.length > 1) {
+    const last = positions[positions.length - 1];
+    if (last.end === canonical.length) {
+      const s = canonical.slice(0, last.start);
+      const norm = tryNormalize(s);
+      if (norm && norm !== canonical) {
+        results.push({ smiles: norm, description: 'remove last atom' });
       }
     }
   }
-  return results;
+
+  return dedup(results, canonical);
 }
 
-/**
- * Enumerate atom removal mutations. Only removes terminal (degree-1) heavy atoms.
- * @param {string} smiles
- * @param {number[]} atomIndices
- * @returns {Array<{ smiles: string, description: string }>}
- */
-export function enumerateRemovals(smiles, atomIndices) {
+export function enumerateFragmentAttachments(smiles, fragments) {
+  const canonical = tryNormalize(smiles);
+  if (!canonical || !fragments || fragments.length === 0) return [];
   const results = [];
-  const mol = OCL.Molecule.fromSmiles(smiles);
-  mol.ensureHelperArrays(OCL.Molecule.cHelperRings || 3);
+  const positions = findAtomPositions(canonical);
 
-  const tried = new Set();
-
-  for (const idx of atomIndices) {
-    if (idx >= mol.getAllAtoms()) continue;
-
-    // Try removing this atom if terminal
-    if (!tried.has(idx) && mol.getAtomicNo(idx) > 1 && mol.getConnAtoms(idx) === 1 && !mol.isRingAtom(idx)) {
-      tried.add(idx);
-      const newSmiles = tryMutation(smiles, (m) => { m.deleteAtom(idx); });
-      if (newSmiles && newSmiles !== smiles) {
-        results.push({ smiles: newSmiles, description: `remove terminal atom ${idx}` });
-      }
-    }
-
-    // Also try removing terminal neighbors
-    if (idx >= mol.getAllAtoms()) continue;
-    const connCount = mol.getConnAtoms(idx);
-    for (let i = 0; i < connCount; i++) {
-      const neighbor = mol.getConnAtom(idx, i);
-      if (tried.has(neighbor)) continue;
-      tried.add(neighbor);
-      if (mol.getAtomicNo(neighbor) > 1 && mol.getConnAtoms(neighbor) === 1 && !mol.isRingAtom(neighbor)) {
-        const newSmiles = tryMutation(smiles, (m) => { m.deleteAtom(neighbor); });
-        if (newSmiles && newSmiles !== smiles) {
-          results.push({ smiles: newSmiles, description: `remove terminal neighbor ${neighbor} of atom ${idx}` });
-        }
+  for (const frag of fragments) {
+    for (const pos of positions) {
+      const s = canonical.slice(0, pos.end) + `(${frag})` + canonical.slice(pos.end);
+      const norm = tryNormalize(s);
+      if (norm && norm !== canonical) {
+        results.push({ smiles: norm, description: `attach (${frag})` });
       }
     }
   }
-  return results;
+
+  return dedup(results, canonical);
 }
 
-/**
- * Enumerate ring closure mutations — add a bond between two non-adjacent atoms.
- * Only tries atoms with free valence that aren't already bonded.
- * @param {string} smiles
- * @param {number[]} atomIndices - atoms to focus mutations on
- * @returns {Array<{ smiles: string, description: string }>}
- */
-export function enumerateRingClosures(smiles, atomIndices) {
-  const results = [];
-  const mol = OCL.Molecule.fromSmiles(smiles);
-  mol.ensureHelperArrays(OCL.Molecule.cHelperNeighbours || 1);
+export function enumerateAllMutations(smiles, hoseFragments = []) {
+  const canonical = tryNormalize(smiles);
+  if (!canonical) return [];
 
-  const totalAtoms = mol.getAllAtoms();
-
-  // Build adjacency set for quick neighbor checks
-  const adjacency = new Set();
-  for (let b = 0; b < mol.getAllBonds(); b++) {
-    const a1 = mol.getBondAtom(0, b);
-    const a2 = mol.getBondAtom(1, b);
-    adjacency.add(`${a1}-${a2}`);
-    adjacency.add(`${a2}-${a1}`);
-  }
-
-  for (const idx of atomIndices) {
-    if (idx >= totalAtoms) continue;
-    if (mol.getAtomicNo(idx) <= 1) continue;
-    if (mol.getFreeValence(idx) <= 0) continue;
-
-    // Try closing a ring to any other heavy atom with free valence
-    for (let j = 0; j < totalAtoms; j++) {
-      if (j === idx) continue;
-      if (mol.getAtomicNo(j) <= 1) continue;
-      if (mol.getFreeValence(j) <= 0) continue;
-      if (adjacency.has(`${idx}-${j}`)) continue; // already bonded
-
-      const newSmiles = tryMutation(smiles, (m) => {
-        m.addBond(idx, j);
-      });
-      if (newSmiles && newSmiles !== smiles) {
-        results.push({
-          smiles: newSmiles,
-          description: `ring closure: bond ${idx}-${j}`,
-        });
-      }
-    }
-  }
-  return results;
-}
-
-// Common fragments as SMILES with attachment point
-const FRAGMENT_SMARTS = [
-  { smiles: 'C',   atomicNo: 6,  label: 'methyl',    build: (m, anchor) => { const a = m.addAtom(6); m.addBond(anchor, a); } },
-  { smiles: 'CC',  atomicNo: 6,  label: 'ethyl',     build: (m, anchor) => { const a = m.addAtom(6); m.addBond(anchor, a); const b = m.addAtom(6); m.addBond(a, b); } },
-  { smiles: 'O',   atomicNo: 8,  label: 'hydroxyl',  build: (m, anchor) => { const a = m.addAtom(8); m.addBond(anchor, a); } },
-  { smiles: 'N',   atomicNo: 7,  label: 'amino',     build: (m, anchor) => { const a = m.addAtom(7); m.addBond(anchor, a); } },
-  { smiles: 'C=O', atomicNo: 6,  label: 'carbonyl',  build: (m, anchor) => { const c = m.addAtom(6); m.addBond(anchor, c); const o = m.addAtom(8); const b = m.addBond(c, o); m.setBondOrder(b, 2); } },
-  { smiles: 'C(O)=O', atomicNo: 6, label: 'carboxyl', build: (m, anchor) => { const c = m.addAtom(6); m.addBond(anchor, c); const o1 = m.addAtom(8); m.addBond(c, o1); const o2 = m.addAtom(8); const b = m.addBond(c, o2); m.setBondOrder(b, 2); } },
-];
-
-/**
- * Enumerate fragment addition mutations — add common functional groups in one step.
- * @param {string} smiles
- * @param {number[]} atomIndices - atoms to focus mutations on
- * @returns {Array<{ smiles: string, description: string }>}
- */
-export function enumerateFragmentAdditions(smiles, atomIndices) {
-  const results = [];
-  const mol = OCL.Molecule.fromSmiles(smiles);
-  mol.ensureHelperArrays(OCL.Molecule.cHelperNeighbours || 1);
-
-  for (const idx of atomIndices) {
-    if (idx >= mol.getAllAtoms()) continue;
-    if (mol.getAtomicNo(idx) <= 1) continue;
-    if (mol.getFreeValence(idx) <= 0) continue;
-
-    for (const frag of FRAGMENT_SMARTS) {
-      const newSmiles = tryMutation(smiles, (m) => {
-        frag.build(m, idx);
-      });
-      if (newSmiles && newSmiles !== smiles) {
-        results.push({
-          smiles: newSmiles,
-          description: `add ${frag.label} to atom ${idx}`,
-        });
-      }
-    }
-  }
-  return results;
-}
-
-/**
- * Enumerate all single-step mutations for given atom indices, deduplicated by SMILES.
- * @param {string} smiles
- * @param {number[]} atomIndices - atoms to focus mutations on
- * @returns {Array<{ smiles: string, description: string }>}
- */
-export function enumerateAllMutations(smiles, atomIndices) {
   const all = [
-    ...enumerateSubstitutions(smiles, atomIndices),
-    ...enumerateBondChanges(smiles, atomIndices),
-    ...enumerateAdditions(smiles, atomIndices),
-    ...enumerateRemovals(smiles, atomIndices),
-    ...enumerateRingClosures(smiles, atomIndices),
-    ...enumerateFragmentAdditions(smiles, atomIndices),
+    ...enumerateSubstitutions(canonical),
+    ...enumerateAdditions(canonical),
+    ...enumerateBondChanges(canonical),
+    ...enumerateRemovals(canonical),
+    ...enumerateFragmentAttachments(canonical, hoseFragments),
   ];
 
-  // Deduplicate by canonical SMILES
-  const seen = new Set();
-  seen.add(smiles); // exclude identity mutation
-  const unique = [];
-  for (const m of all) {
-    if (!seen.has(m.smiles)) {
-      seen.add(m.smiles);
-      unique.push(m);
-    }
-  }
-  return unique;
-}
-
-/**
- * Get all heavy atom indices in a molecule.
- * @param {string} smiles
- * @returns {number[]}
- */
-export function getAllHeavyAtomIndices(smiles) {
-  const mol = OCL.Molecule.fromSmiles(smiles);
-  const indices = [];
-  for (let i = 0; i < mol.getAllAtoms(); i++) {
-    if (mol.getAtomicNo(i) > 1) indices.push(i);
-  }
-  return indices;
-}
-
-/**
- * Get all carbon atom indices in a molecule.
- * @param {string} smiles
- * @returns {number[]}
- */
-export function getAllCarbonIndices(smiles) {
-  const mol = OCL.Molecule.fromSmiles(smiles);
-  const indices = [];
-  for (let i = 0; i < mol.getAllAtoms(); i++) {
-    if (mol.getAtomicNo(i) === 6) indices.push(i);
-  }
-  return indices;
+  return dedup(all, canonical);
 }

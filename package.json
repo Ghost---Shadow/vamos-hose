@@ -42,6 +42,7 @@
   },
   "homepage": "https://github.com/Ghost---Shadow/vamos-hose#readme",
   "dependencies": {
-    "openchemlib": "^9.20.0"
+    "openchemlib": "^9.20.0",
+    "smiles-js": "^2.2.0"
   }
 }

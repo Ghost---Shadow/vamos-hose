@@ -1,13 +1,84 @@
 import { smilesToHoseCodes } from './smiles-to-hose.js';
 import { queryHose, preloadChunks } from './database.js';
-import { enumerateAllMutations, getAllHeavyAtomIndices, getAllCarbonIndices } from './mutate.js';
+import { enumerateAllMutations, getAtomCount } from './mutate.js';
+import { estimateFromSpectra, resolveHoseSmiles } from './estimate.js';
+
+const COMMON_FRAGMENTS = ['C', 'CC', 'O', 'N', 'C(=O)O', 'NC', 'S'];
+
+/**
+ * Extract useful sub-fragments from a full molecule SMILES.
+ * Pulls out parenthesized branches which represent functional groups.
+ */
+function extractFragmentsFromSmiles(smiles) {
+  const fragments = new Set();
+  // Simple branches: (O), (N), (CC), etc.
+  const simpleRegex = /\(([^()]+)\)/g;
+  let match;
+  while ((match = simpleRegex.exec(smiles)) !== null) {
+    const inner = match[1];
+    const cleaned = inner.replace(/^[=#:]/, '');
+    if (cleaned.length > 0) fragments.add(cleaned);
+  }
+  // Nested branches: (C(=O)O), (NC(=O)), etc.
+  const nestedRegex = /\(([^()]*\([^()]+\)[^()]*)\)/g;
+  while ((match = nestedRegex.exec(smiles)) !== null) {
+    const inner = match[1];
+    const cleaned = inner.replace(/^[=#:]/, '');
+    if (cleaned.length > 0) fragments.add(cleaned);
+  }
+  return [...fragments];
+}
+
+/**
+ * Get HOSE-guided fragments for poorly-matched peaks.
+ * Uses reverse lookup: target shift → HOSE codes → SMILES → extract fragments.
+ */
+async function getGuidedFragments(targetShifts, currentLoss, currentPrediction) {
+  const peaksToLookup = [];
+
+  // Unmatched target peaks
+  for (const idx of currentLoss.unmatchedTarget) {
+    peaksToLookup.push(targetShifts[idx]);
+  }
+
+  // Worst-matched peaks (error > 2 ppm)
+  const sortedAssignments = [...currentLoss.assignments].sort((a, b) => b.error - a.error);
+  for (const a of sortedAssignments.slice(0, 5)) {
+    if (a.error > 2.0) {
+      peaksToLookup.push(targetShifts[a.targetIdx]);
+    }
+  }
+
+  if (peaksToLookup.length === 0) return [...COMMON_FRAGMENTS];
+
+  // Dedupe peaks (round to nearest integer for PPM bucket lookup)
+  const uniquePeaks = [...new Set(peaksToLookup.map(p => Math.round(p)))];
+
+  try {
+    const hoseResults = await estimateFromSpectra({
+      peaks: uniquePeaks,
+      tolerance: 5.0,
+      maxResults: 3,
+    });
+
+    const enriched = await resolveHoseSmiles(hoseResults);
+
+    const fragments = new Set(COMMON_FRAGMENTS);
+    for (const result of Object.values(enriched)) {
+      if (!result || !result.smiles) continue;
+      for (const frag of extractFragmentsFromSmiles(result.smiles)) {
+        fragments.add(frag);
+      }
+    }
+    return [...fragments];
+  } catch {
+    return [...COMMON_FRAGMENTS];
+  }
+}
 
 /**
  * Predict 13C shifts with atom index tracking.
- * Unlike lookupNmrShifts, this returns atom indices for error attribution.
- *
- * @param {string} smiles
- * @returns {Promise<Array<{ shift: number, atomIndex: number, hose: string }>>}
+ * Returns atom indices for error attribution.
  */
 export async function predictShiftsWithAtomIndices(smiles) {
   const hoseCodes = smilesToHoseCodes(smiles, { nucleus: '13C' });
@@ -18,10 +89,8 @@ export async function predictShiftsWithAtomIndices(smiles) {
     let hit = null;
     let hoseToUse = entry.hose;
 
-    // Exact match
     hit = await queryHose(hoseToUse);
 
-    // Truncation fallback (same logic as lookup.js)
     if (!hit) {
       let truncated = hoseToUse;
       for (let attempt = 0; attempt < 8 && !hit; attempt++) {
@@ -42,7 +111,6 @@ export async function predictShiftsWithAtomIndices(smiles) {
       }
     }
 
-    // Try without leading H's
     if (!hit && hoseToUse.match(/^H+/)) {
       const withoutH = hoseToUse.replace(/^H+/, '');
       hit = await queryHose(withoutH);
@@ -63,12 +131,6 @@ export async function predictShiftsWithAtomIndices(smiles) {
 /**
  * Compute loss between predicted and target 13C NMR shifts.
  * Uses greedy nearest-neighbor assignment.
- *
- * @param {number[]} predictedShifts - predicted shift values
- * @param {number[]} targetShifts - target shift values
- * @param {object} [options]
- * @param {number} [options.unmatchedPenalty=50] - penalty per unmatched peak (ppm)
- * @returns {{ loss: number, assignments: Array, unmatchedTarget: number[], unmatchedPred: number[], predAtomError: Map<number, number> }}
  */
 export function computeLoss(predictedShifts, targetShifts, options = {}) {
   const { unmatchedPenalty = 50 } = options;
@@ -95,7 +157,6 @@ export function computeLoss(predictedShifts, targetShifts, options = {}) {
   const usedPred = new Set();
   const assignments = [];
 
-  // For each target peak, greedily assign nearest unassigned predicted peak
   for (const target of targetSorted) {
     let bestDist = Infinity;
     let bestPred = null;
@@ -119,7 +180,6 @@ export function computeLoss(predictedShifts, targetShifts, options = {}) {
     }
   }
 
-  // Unmatched indices
   const matchedTarget = new Set(assignments.map(a => a.targetIdx));
   const unmatchedTarget = targetSorted
     .filter(t => !matchedTarget.has(t.origIdx))
@@ -128,12 +188,10 @@ export function computeLoss(predictedShifts, targetShifts, options = {}) {
     .filter(p => !usedPred.has(p.origIdx))
     .map(p => p.origIdx);
 
-  // Total loss
   const matchedError = assignments.reduce((sum, a) => sum + a.error, 0);
   const penalty = (unmatchedTarget.length + unmatchedPred.length) * unmatchedPenalty;
   const loss = matchedError + penalty;
 
-  // Per-predicted-atom error map
   const predAtomError = new Map();
   for (const a of assignments) {
     predAtomError.set(a.predIdx, a.error);
@@ -147,12 +205,6 @@ export function computeLoss(predictedShifts, targetShifts, options = {}) {
 
 /**
  * Identify the top-K predicted atoms with highest error contribution.
- * Returns their molecule atom indices for focused mutation.
- *
- * @param {{ predAtomError: Map<number, number> }} lossResult
- * @param {Array<{ shift: number, atomIndex: number }>} prediction
- * @param {number} [topK=5]
- * @returns {number[]} molecule atom indices with highest error
  */
 export function identifyWorstAtoms(lossResult, prediction, topK = 5) {
   const atomErrors = [];
@@ -169,18 +221,7 @@ export function identifyWorstAtoms(lossResult, prediction, topK = 5) {
 
 /**
  * Identify a molecule whose predicted 13C NMR spectrum matches the target shifts.
- * Uses steepest descent with discrete molecular mutations.
- *
- * @param {number[]} targetShifts - target 13C NMR chemical shifts (ppm)
- * @param {object} [options]
- * @param {string} [options.startSmiles='C'] - starting molecule SMILES
- * @param {number} [options.maxSteps=50] - maximum optimization steps
- * @param {number} [options.topK=5] - number of worst atoms to focus mutations on
- * @param {number} [options.unmatchedPenalty=50] - penalty per unmatched peak
- * @param {number} [options.convergenceThreshold=0.01] - stop if loss improvement < this
- * @param {boolean} [options.widenOnPlateau=true] - try all-atom mutations if focused fails
- * @param {function} [options.onStep] - callback(stepInfo) for progress tracking
- * @returns {Promise<{ smiles: string, loss: number, steps: number, trajectory: Array, predictedShifts: Array }>}
+ * Uses steepest descent with HOSE-guided fragment mutations via smiles-js.
  */
 export async function identifyMolecule(targetShifts, options = {}) {
   const {
@@ -189,13 +230,14 @@ export async function identifyMolecule(targetShifts, options = {}) {
     topK = 5,
     unmatchedPenalty = 50,
     convergenceThreshold = 0.01,
-    widenOnPlateau = true,
     onStep = null,
+    maxBacktracks = 3,
+    timeoutMs = 0,
   } = options;
 
   const lossOpts = { unmatchedPenalty };
+  const startTime = timeoutMs > 0 ? Date.now() : 0;
 
-  // Initial prediction
   let currentSmiles = startSmiles;
   let currentPrediction = await predictShiftsWithAtomIndices(currentSmiles);
   let currentShifts = currentPrediction.map(p => p.shift);
@@ -209,31 +251,34 @@ export async function identifyMolecule(targetShifts, options = {}) {
     predictedShifts: [...currentShifts],
   }];
 
+  let plateauCount = 0;
+  let backtracksUsed = 0;
+  const visitedSmiles = new Set([currentSmiles]);
+
   for (let step = 1; step <= maxSteps; step++) {
-    // Error attribution: identify worst atoms
-    const worstAtomIndices = identifyWorstAtoms(currentLoss, currentPrediction, topK);
+    // Time budget check
+    if (timeoutMs > 0 && (Date.now() - startTime) >= timeoutMs) break;
 
-    let atomIndicesToMutate = worstAtomIndices.length > 0
-      ? worstAtomIndices
-      : getAllCarbonIndices(currentSmiles);
+    // Get HOSE-guided fragments based on poorly-matched peaks
+    const guidedFragments = await getGuidedFragments(targetShifts, currentLoss, currentPrediction);
 
-    // Enumerate focused mutations
-    let candidates = enumerateAllMutations(currentSmiles, atomIndicesToMutate);
+    // Enumerate mutations with HOSE-guided fragments
+    let candidates = enumerateAllMutations(currentSmiles, guidedFragments);
 
-    // Widen if no focused candidates found
-    if (candidates.length === 0 && widenOnPlateau) {
-      atomIndicesToMutate = getAllHeavyAtomIndices(currentSmiles);
-      candidates = enumerateAllMutations(currentSmiles, atomIndicesToMutate);
-    }
+    // Filter tabu list
+    candidates = candidates.filter(c => !visitedSmiles.has(c.smiles));
 
     if (candidates.length === 0) break;
 
-    // Evaluate all candidates in parallel (batched to avoid memory spikes)
+    // Evaluate candidates in parallel batches
     let bestCandidate = null;
     let bestLoss = currentLoss.loss;
+    let leastWorseCand = null;
+    let leastWorseLoss = Infinity;
 
     const BATCH_SIZE = 32;
     for (let bStart = 0; bStart < candidates.length; bStart += BATCH_SIZE) {
+      if (timeoutMs > 0 && (Date.now() - startTime) >= timeoutMs) break;
       const batch = candidates.slice(bStart, bStart + BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(async (candidate) => {
@@ -257,16 +302,49 @@ export async function identifyMolecule(targetShifts, options = {}) {
             lossResult: loss,
           };
         }
+        if (loss.loss < leastWorseLoss && loss.loss >= currentLoss.loss) {
+          leastWorseLoss = loss.loss;
+          leastWorseCand = { smiles: candidate.smiles, description: candidate.description, prediction: pred, shifts, lossResult: loss };
+        }
       }
     }
 
     // Check convergence
     if (bestCandidate === null || (currentLoss.loss - bestLoss) < convergenceThreshold) {
-      break;
+      plateauCount++;
+      const tolerance = [1.2, 1.5, 2.0][Math.min(plateauCount - 1, 2)];
+      if (plateauCount <= 3 && leastWorseCand && leastWorseLoss <= currentLoss.loss * tolerance) {
+        bestCandidate = leastWorseCand;
+        bestLoss = leastWorseLoss;
+        bestCandidate.description = `[perturb] ${bestCandidate.description}`;
+      } else if (backtracksUsed < maxBacktracks && trajectory.length >= 3) {
+        const rewindFractions = [0.6, 0.3, 0.1];
+        const fraction = rewindFractions[Math.min(backtracksUsed, rewindFractions.length - 1)];
+        const rewindIdx = Math.max(1, Math.floor(trajectory.length * fraction));
+        const rewindPoint = trajectory[rewindIdx];
+        currentSmiles = rewindPoint.smiles;
+        currentPrediction = await predictShiftsWithAtomIndices(currentSmiles);
+        currentShifts = currentPrediction.map(p => p.shift);
+        currentLoss = computeLoss(currentShifts, targetShifts, lossOpts);
+        plateauCount = 0;
+        backtracksUsed++;
+        trajectory.push({
+          step, smiles: currentSmiles, loss: currentLoss.loss,
+          mutation: `[backtrack to step ${rewindPoint.step}]`,
+          predictedShifts: [...currentShifts],
+        });
+        if (onStep) onStep(trajectory[trajectory.length - 1]);
+        continue;
+      } else {
+        break;
+      }
+    } else {
+      plateauCount = 0;
     }
 
     // Accept best mutation
     currentSmiles = bestCandidate.smiles;
+    visitedSmiles.add(currentSmiles);
     currentPrediction = bestCandidate.prediction;
     currentShifts = bestCandidate.shifts;
     currentLoss = bestCandidate.lossResult;
@@ -282,15 +360,25 @@ export async function identifyMolecule(targetShifts, options = {}) {
 
     if (onStep) onStep(stepInfo);
 
-    // Early termination: perfect match
     if (currentLoss.loss < convergenceThreshold) break;
   }
 
+  // Return best point across trajectory
+  let bestPoint = trajectory[0];
+  for (const point of trajectory) {
+    if (point.loss < bestPoint.loss) bestPoint = point;
+  }
+
+  let bestPrediction = currentPrediction;
+  if (bestPoint.smiles !== currentSmiles) {
+    bestPrediction = await predictShiftsWithAtomIndices(bestPoint.smiles);
+  }
+
   return {
-    smiles: currentSmiles,
-    loss: currentLoss.loss,
+    smiles: bestPoint.smiles,
+    loss: bestPoint.loss,
     steps: trajectory.length - 1,
     trajectory,
-    predictedShifts: currentPrediction,
+    predictedShifts: bestPrediction,
   };
 }
