@@ -1,6 +1,20 @@
 import { normalize } from 'smiles-js';
 
 const SUBSTITUTION_ATOMS = ['C', 'c', 'N', 'n', 'O', 'o', 'S', 's', 'F', 'Cl', 'Br'];
+
+const HEAVY_ATOM_WEIGHT = {
+  'B': 10.811, 'b': 10.811, 'C': 12.011, 'c': 12.011,
+  'N': 14.007, 'n': 14.007, 'O': 15.999, 'o': 15.999,
+  'F': 18.998, 'P': 30.974, 'p': 30.974, 'S': 32.065,
+  's': 32.065, 'Cl': 35.453, 'Br': 79.904, 'I': 126.904,
+};
+
+// Max valence for implicit H estimation
+const MAX_VALENCE = {
+  'B': 3, 'b': 2, 'C': 4, 'c': 3, 'N': 3, 'n': 2,
+  'O': 2, 'o': 1, 'F': 1, 'P': 3, 'p': 2, 'S': 2,
+  's': 1, 'Cl': 1, 'Br': 1, 'I': 1,
+};
 const ADDABLE_GROUPS = ['C', 'N', 'O'];
 
 // Match atom tokens in SMILES: bracket atoms, two-letter organics, single-letter organics
@@ -40,6 +54,40 @@ export function validateSmiles(smiles) {
 
 export function getAtomCount(smiles) {
   return findAtomPositions(smiles).length;
+}
+
+/**
+ * Fast molecular weight estimate from SMILES string.
+ * Sums heavy atom weights + estimates implicit hydrogens from valence rules.
+ * Accurate enough for MW-based candidate filtering (~±5 Da for typical organics).
+ */
+export function getMolecularWeight(smiles) {
+  const atoms = findAtomPositions(smiles);
+  if (atoms.length === 0) return 0;
+
+  let heavyWeight = 0;
+  let totalMaxValence = 0;
+  for (const { atom } of atoms) {
+    heavyWeight += HEAVY_ATOM_WEIGHT[atom] || 12.011;
+    totalMaxValence += MAX_VALENCE[atom] || 4;
+  }
+
+  // Count explicit bonds: each bond in SMILES connects two atoms
+  // Bonds = (number of atoms - 1) for a tree, plus ring closures
+  const ringClosures = (smiles.match(/[0-9%]/g) || []).length / 2;
+  const explicitBonds = (atoms.length - 1) + ringClosures;
+
+  // Double/triple bonds consume extra valence
+  const doubleBonds = (smiles.match(/=/g) || []).length;
+  const tripleBonds = (smiles.match(/#/g) || []).length;
+  const extraBondOrders = doubleBonds + tripleBonds * 2;
+
+  // Each bond uses 1 valence from each endpoint = 2 valence units total
+  // Implicit H fills remaining valence
+  const usedValence = (explicitBonds + extraBondOrders) * 2;
+  const implicitH = Math.max(0, totalMaxValence - usedValence);
+
+  return heavyWeight + implicitH * 1.008;
 }
 
 export function enumerateSubstitutions(smiles) {

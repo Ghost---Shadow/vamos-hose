@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { identifyMolecule, predictShiftsWithAtomIndices, computeLoss } from '../src/identify.js';
-import { enumerateAllMutations } from '../src/mutate.js';
+import { enumerateAllMutations, getMolecularWeight } from '../src/mutate.js';
 import {
   morphine,
   codeine,
@@ -43,6 +43,7 @@ describe('Opioids - Gradient Descent 5% Loss', () => {
       const targetShifts = targetPred.map(p => p.shift);
       const targetMagnitude = targetShifts.reduce((s, v) => s + Math.abs(v), 0);
       const fivePctThreshold = targetMagnitude * 0.05;
+      const targetMW = getMolecularWeight(compound.smiles);
 
       const result = await identifyMolecule(targetShifts, {
         startSmiles: compound.start,
@@ -50,6 +51,7 @@ describe('Opioids - Gradient Descent 5% Loss', () => {
         topK: 5,
         unmatchedPenalty: 50,
         timeoutMs: 4500,
+        targetMW,
       });
 
       printTrajectory(compound.name, result, targetShifts);

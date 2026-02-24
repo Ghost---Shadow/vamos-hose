@@ -1,6 +1,6 @@
 import { smilesToHoseCodes } from './smiles-to-hose.js';
 import { queryHose, preloadChunks } from './database.js';
-import { enumerateAllMutations, getAtomCount } from './mutate.js';
+import { enumerateAllMutations, getAtomCount, getMolecularWeight } from './mutate.js';
 import { estimateFromSpectra, resolveHoseSmiles } from './estimate.js';
 
 const COMMON_FRAGMENTS = ['C', 'CC', 'O', 'N', 'C(=O)O', 'NC', 'S'];
@@ -233,6 +233,8 @@ export async function identifyMolecule(targetShifts, options = {}) {
     onStep = null,
     maxBacktracks = 3,
     timeoutMs = 0,
+    targetMW = 0,
+    mwTolerance = 0.3,
   } = options;
 
   const lossOpts = { unmatchedPenalty };
@@ -267,6 +269,15 @@ export async function identifyMolecule(targetShifts, options = {}) {
 
     // Filter tabu list
     candidates = candidates.filter(c => !visitedSmiles.has(c.smiles));
+
+    // Filter by molecular weight: reject candidates that overshoot targetMW
+    if (targetMW > 0) {
+      const maxMW = targetMW * (1 + mwTolerance);
+      candidates = candidates.filter(c => {
+        const mw = getMolecularWeight(c.smiles);
+        return mw > 0 && mw <= maxMW;
+      });
+    }
 
     if (candidates.length === 0) break;
 
