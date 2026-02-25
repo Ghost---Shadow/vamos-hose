@@ -37,6 +37,9 @@ export async function fetchWithRetry(url, retries = MAX_RETRIES) {
 /** Cache of loaded chunks: index -> chunk data object */
 const _chunkCache = new Map();
 
+/** In-flight chunk load promises: index -> Promise (prevents duplicate concurrent loads) */
+const _inflightChunks = new Map();
+
 /**
  * Hash a string to a 32-bit integer (must match shard_database.mjs).
  */
@@ -66,7 +69,19 @@ export function chunkIndex(hoseCode) {
  */
 export async function loadChunk(idx) {
   if (_chunkCache.has(idx)) return _chunkCache.get(idx);
+  // Deduplicate concurrent loads of the same chunk
+  if (_inflightChunks.has(idx)) return _inflightChunks.get(idx);
 
+  const promise = _doLoadChunk(idx);
+  _inflightChunks.set(idx, promise);
+  try {
+    return await promise;
+  } finally {
+    _inflightChunks.delete(idx);
+  }
+}
+
+async function _doLoadChunk(idx) {
   const chunkName = `chunk_${String(idx).padStart(3, '0')}.js`;
   const chunkUrl = CHUNKS_BASE + chunkName;
 

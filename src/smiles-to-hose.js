@@ -8,8 +8,14 @@ import { generateHoseCode } from './hose-generator.js';
  * @param {object} options - { nucleus: '13C' }
  * @returns {Array<{atom: string, index: number, hose: string}>}
  */
+// Module-level HOSE code cache: avoids redundant openchemlib parsing
+const _hoseCache = new Map();
+
 export function smilesToHoseCodes(smiles, options = {}) {
   const { nucleus = '13C' } = options;
+  const cacheKey = `${smiles}\0${nucleus}`;
+  if (_hoseCache.has(cacheKey)) return _hoseCache.get(cacheKey);
+
   const targetElement = nucleusToElement(nucleus);
 
   // Step 1: Parse SMILES into a molecule graph
@@ -31,8 +37,11 @@ export function smilesToHoseCodes(smiles, options = {}) {
     });
   }
 
+  _hoseCache.set(cacheKey, results);
   return results;
 }
+
+export function clearHoseCache() { _hoseCache.clear(); }
 
 /**
  * Map nucleus string to element symbol.
