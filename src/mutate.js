@@ -101,6 +101,29 @@ function candidate(smiles, description, canonical) {
 
 // ── SMILES analysis utilities ──────────────────────────────────────────────────
 
+/** Extract the element symbol from an atom token, normalizing aromatic to uppercase. */
+function elementFromToken(token) {
+  if (token.startsWith('[')) {
+    const m = token.match(/\[([A-Za-z][a-z]?)/);
+    if (!m) return null;
+    const e = m[1];
+    return e[0].toUpperCase() + e.slice(1);
+  }
+  return token[0].toUpperCase() + token.slice(1);
+}
+
+/** Count atoms by element in a SMILES string. Aromatic atoms normalized to uppercase. */
+export function countAtomsByElement(smiles) {
+  const counts = {};
+  const re = new RegExp(ATOM_RE.source, 'g');
+  let m;
+  while ((m = re.exec(smiles)) !== null) {
+    const elem = elementFromToken(m[0]);
+    if (elem) counts[elem] = (counts[elem] || 0) + 1;
+  }
+  return counts;
+}
+
 /** Fast carbon count from SMILES (no parsing needed). */
 export function countCarbons(smiles) {
   let count = 0;

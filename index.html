@@ -252,6 +252,12 @@
                 </div>
                 <div class="param-row">
                     <div class="param-group">
+                        <label for="id-formula-input">Molecular Formula (optional)</label>
+                        <input type="text" id="id-formula-input" placeholder="e.g. C8H9NO2">
+                    </div>
+                </div>
+                <div class="param-row">
+                    <div class="param-group">
                         <label for="id-steps-input">Max Steps</label>
                         <input type="number" id="id-steps-input" value="25" min="1" max="100" step="1">
                     </div>
@@ -264,9 +270,9 @@
                 <button class="stop-btn" id="id-stop-btn" disabled>Stop</button>
                 <div class="examples">
                     <h3>Examples</h3>
-                    <button class="example-btn" data-id-peaks="170.4, 169.8, 151.3, 139.2, 132.8, 125.7, 124.9, 123.6, 21.5"><span class="name">Aspirin (9 peaks)</span>170.4, 169.8, 151.3, 139.2, 132.8, 125.7, 124.9, 123.6, 21.5</button>
-                    <button class="example-btn" data-id-peaks="24.2, 168.6, 115.5, 121.6, 131.6, 148.1, 153.7, 196.4"><span class="name">Acetaminophen (8 peaks)</span>24.2, 168.6, 115.5, 121.6, 131.6, 148.1, 153.7, 196.4</button>
-                    <button class="example-btn" data-id-peaks="15.5, 22.6, 30.8, 44.4, 48.9, 55.0, 55.3, 62.8, 72.9, 110.1, 117.1, 120.0, 122.2, 123.0, 123.9, 126.3, 126.3, 131.6, 131.6, 133.2, 135.9, 135.9, 137.9, 141.2, 147.8, 151.7, 155.0, 158.9, 172.8, 174.1, 175.2, 178.0, 180.0"><span class="name">Telmisartan (33 peaks)</span>15.5, 22.6, 30.8, 44.4, 48.9, ...</button>
+                    <button class="example-btn" data-id-peaks="170.4, 169.8, 151.3, 139.2, 132.8, 125.7, 124.9, 123.6, 21.5" data-id-formula="C9H8O4"><span class="name">Aspirin (C9H8O4)</span>170.4, 169.8, 151.3, 139.2, 132.8, 125.7, 124.9, 123.6, 21.5</button>
+                    <button class="example-btn" data-id-peaks="24.2, 168.6, 115.5, 121.6, 131.6, 148.1, 153.7, 196.4" data-id-formula="C8H9NO2"><span class="name">Acetaminophen (C8H9NO2)</span>24.2, 168.6, 115.5, 121.6, 131.6, 148.1, 153.7, 196.4</button>
+                    <button class="example-btn" data-id-peaks="15.5, 22.6, 30.8, 44.4, 48.9, 55.0, 55.3, 62.8, 72.9, 110.1, 117.1, 120.0, 122.2, 123.0, 123.9, 126.3, 126.3, 131.6, 131.6, 133.2, 135.9, 135.9, 137.9, 141.2, 147.8, 151.7, 155.0, 158.9, 172.8, 174.1, 175.2, 178.0, 180.0" data-id-formula="C33H30N4O2"><span class="name">Telmisartan (C33H30N4O2)</span>15.5, 22.6, 30.8, 44.4, 48.9, ...</button>
                     <button class="example-btn" data-id-peaks="14.1, 22.7, 30.2, 32.0, 40.5, 127.5, 128.3, 130.6, 137.0, 174.1"><span class="name">Unknown (10 peaks)</span>14.1, 22.7, 30.2, 32.0, 40.5, 127.5, 128.3, 130.6, 137.0, 174.1</button>
                 </div>
             </div>
@@ -298,7 +304,7 @@
         })();
     </script>
     <script type="module">
-        import { lookupNmrShifts, estimateFromSpectra, resolveHoseSmiles, clearEstimateCache, identifyMolecule, computeLoss } from './index.js';
+        import { lookupNmrShifts, estimateFromSpectra, resolveHoseSmiles, clearEstimateCache, identifyMolecule, computeLoss, countAtomsByElement } from './index.js';
 
         let smilesDrawer;
         function initSmilesDrawer() {
@@ -561,12 +567,28 @@
         // ── Identify tab: Spectra → SMILES (gradient descent) ─────
         const idPeaksInput = document.getElementById('id-peaks-input');
         const idStartInput = document.getElementById('id-start-input');
+        const idFormulaInput = document.getElementById('id-formula-input');
         const idStepsInput = document.getElementById('id-steps-input');
         const idTimeoutInput = document.getElementById('id-timeout-input');
         const idRunBtn = document.getElementById('id-run-btn');
         const idStopBtn = document.getElementById('id-stop-btn');
         const identifyOutput = document.getElementById('identify-output');
         let identifyAbort = false;
+
+        /** Parse molecular formula like "C8H9NO2" into { C: 8, H: 9, N: 1, O: 2 } */
+        function parseFormula(formula) {
+            if (!formula || !formula.trim()) return null;
+            const counts = {};
+            const re = /([A-Z][a-z]?)(\d*)/g;
+            let m;
+            while ((m = re.exec(formula)) !== null) {
+                if (!m[1]) continue;
+                const elem = m[1];
+                const count = m[2] ? parseInt(m[2]) : 1;
+                counts[elem] = (counts[elem] || 0) + count;
+            }
+            return Object.keys(counts).length > 0 ? counts : null;
+        }
 
         async function runIdentify() {
             const peaksStr = idPeaksInput.value.trim();
@@ -583,6 +605,7 @@
             const startSmiles = idStartInput.value.trim() || 'C';
             const maxSteps = parseInt(idStepsInput.value) || 25;
             const timeoutMs = (parseInt(idTimeoutInput.value) || 60) * 1000;
+            const targetAtoms = parseFormula(idFormulaInput.value);
 
             identifyAbort = false;
             idRunBtn.disabled = true;
@@ -596,6 +619,7 @@
                     <div class="summary-row"><span class="summary-label">SMILES</span><span class="smiles-cell" id="id-smiles">${startSmiles}</span></div>
                     <div class="summary-row"><span class="summary-label">Loss</span><span class="summary-value" id="id-loss">-</span></div>
                     <div class="summary-row"><span class="summary-label">Carbons</span><span class="summary-value" id="id-carbons">-</span></div>
+                    <div class="summary-row"><span class="summary-label">Formula</span><span class="summary-value" id="id-formula">${targetAtoms ? idFormulaInput.value.trim() : 'none'}</span></div>
                     <div class="summary-row"><span class="summary-label">Step</span><span class="summary-value" id="id-step">0</span></div>
                 </div>
                 <div class="loss-bar-container"><div class="loss-bar" id="id-loss-bar" style="width:0%"></div></div>
@@ -621,6 +645,7 @@
                     maxSteps,
                     timeoutMs,
                     unmatchedPenalty: 50,
+                    targetAtoms,
                     onStep: (step) => {
                         if (identifyAbort) return;
                         if (initialLoss === null) initialLoss = step.loss;
@@ -682,6 +707,7 @@
         document.querySelectorAll('#tab-identify .example-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 idPeaksInput.value = btn.dataset.idPeaks;
+                idFormulaInput.value = btn.dataset.idFormula || '';
                 runIdentify();
             });
         });

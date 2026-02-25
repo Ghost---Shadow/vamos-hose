@@ -5,6 +5,7 @@ import {
   enumerateFragmentAttachments, enumerateSubstitutions, enumerateBondChanges,
   enumerateRemovals, enumerateRingClosures,
   getAtomCount, getMolecularWeight, containsOnlyAtoms, countCarbons,
+  countAtomsByElement,
 } from './mutate.js';
 import { estimateFromSpectra, resolveHoseSmiles } from './estimate.js';
 import OCL from 'openchemlib';
@@ -282,6 +283,7 @@ export async function identifyMolecule(targetShifts, options = {}) {
     targetMW = 0,
     mwTolerance = 0.3,
     allowedAtoms = null,
+    targetAtoms = null,
   } = options;
 
   const allowedAtomSet = allowedAtoms ? new Set(allowedAtoms) : null;
@@ -327,7 +329,17 @@ export async function identifyMolecule(targetShifts, options = {}) {
     // Staged enumeration: additive mutations first (fast path for structural recovery)
     const filterCandidates = (raw) => {
       let cands = raw.filter(c => !visitedSmiles.has(c.smiles));
-      if (allowedAtomSet) cands = cands.filter(c => containsOnlyAtoms(c.smiles, allowedAtomSet));
+      if (targetAtoms) {
+        cands = cands.filter(c => {
+          const counts = countAtomsByElement(c.smiles);
+          for (const [elem, count] of Object.entries(counts)) {
+            if (!(elem in targetAtoms) || count > targetAtoms[elem]) return false;
+          }
+          return true;
+        });
+      } else if (allowedAtomSet) {
+        cands = cands.filter(c => containsOnlyAtoms(c.smiles, allowedAtomSet));
+      }
       if (targetMW > 0) {
         const maxMW = targetMW * (1 + mwTolerance);
         cands = cands.filter(c => { const mw = getMolecularWeight(c.smiles); return mw > 0 && mw <= maxMW; });
