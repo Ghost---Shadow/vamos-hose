@@ -319,20 +319,7 @@
             outputEl.innerHTML = `<div class="spinner-overlay"><div class="spinner"></div><div class="spinner-text">${text}</div></div>`;
         }
 
-        function drawLorentzianSVG(container, shifts, options = {}) {
-            const { range = [0, 220], lineWidth = 0.5, title = 'Predicted 13C NMR Spectrum' } = options;
-            const svgW = 800;
-            const svgH = 280;
-            const marginTop = 32;
-            const marginBottom = 52;
-            const marginLeft = 10;
-            const marginRight = 10;
-            const plotW = svgW - marginLeft - marginRight;
-            const plotH = svgH - marginTop - marginBottom;
-            const [lo, hi] = range;
-            const gamma = lineWidth;
-
-            const numPts = plotW * 2;
+        function buildLorentzianTrace(shifts, numPts, lo, hi, gamma) {
             const curve = new Float64Array(numPts);
             for (const s of shifts) {
                 for (let i = 0; i < numPts; i++) {
@@ -341,8 +328,10 @@
                     curve[i] += (gamma * gamma) / (diff * diff + gamma * gamma);
                 }
             }
-            const maxI = Math.max(...curve) || 1;
+            return curve;
+        }
 
+        function buildPaths(curve, maxI, numPts, marginLeft, marginTop, plotW, plotH) {
             let linePath = '';
             let areaPath = `M${marginLeft},${marginTop + plotH}`;
             for (let i = 0; i < numPts; i++) {
@@ -353,6 +342,21 @@
                 areaPath += `L${x.toFixed(1)},${y.toFixed(1)}`;
             }
             areaPath += `L${marginLeft + plotW},${marginTop + plotH}Z`;
+            return { linePath, areaPath };
+        }
+
+        function drawLorentzianSVG(container, shifts, options = {}) {
+            const { range = [0, 220], lineWidth = 0.5, title = 'Predicted 13C NMR Spectrum' } = options;
+            const svgW = 800, svgH = 280;
+            const marginTop = 32, marginBottom = 52, marginLeft = 10, marginRight = 10;
+            const plotW = svgW - marginLeft - marginRight;
+            const plotH = svgH - marginTop - marginBottom;
+            const [lo, hi] = range;
+            const numPts = plotW * 2;
+
+            const curve = buildLorentzianTrace(shifts, numPts, lo, hi, lineWidth);
+            const maxI = Math.max(...curve) || 1;
+            const { linePath, areaPath } = buildPaths(curve, maxI, numPts, marginLeft, marginTop, plotW, plotH);
 
             const step = hi - lo <= 50 ? 5 : hi - lo <= 100 ? 10 : 20;
             let ticksSVG = '';
@@ -370,6 +374,56 @@
                 <path d="${linePath}" fill="none" stroke="#0064c8" stroke-width="1.5"/>
                 <line x1="${marginLeft}" y1="${marginTop + plotH}" x2="${marginLeft + plotW}" y2="${marginTop + plotH}" stroke="#333" stroke-width="1"/>
                 ${ticksSVG}
+                <text x="${svgW / 2}" y="${svgH - 8}" text-anchor="middle" fill="#333" font-family="Segoe UI, sans-serif" font-size="13">Chemical Shift (ppm)</text>
+            </svg>`;
+        }
+
+        /** Draw two overlaid Lorentzian traces: target (orange) and predicted (blue). */
+        function drawOverlaySpectrumSVG(container, targetShifts, predictedShifts, options = {}) {
+            const { range = [0, 220], lineWidth = 0.5 } = options;
+            const svgW = 800, svgH = 280;
+            const marginTop = 32, marginBottom = 52, marginLeft = 10, marginRight = 10;
+            const plotW = svgW - marginLeft - marginRight;
+            const plotH = svgH - marginTop - marginBottom;
+            const [lo, hi] = range;
+            const numPts = plotW * 2;
+
+            const tCurve = buildLorentzianTrace(targetShifts, numPts, lo, hi, lineWidth);
+            const pCurve = buildLorentzianTrace(predictedShifts, numPts, lo, hi, lineWidth);
+            const maxI = Math.max(...tCurve, ...pCurve) || 1;
+
+            const tPaths = buildPaths(tCurve, maxI, numPts, marginLeft, marginTop, plotW, plotH);
+            const pPaths = buildPaths(pCurve, maxI, numPts, marginLeft, marginTop, plotW, plotH);
+
+            const step = hi - lo <= 50 ? 5 : hi - lo <= 100 ? 10 : 20;
+            let ticksSVG = '';
+            for (let ppm = Math.ceil(lo / step) * step; ppm <= hi; ppm += step) {
+                const x = marginLeft + plotW * (hi - ppm) / (hi - lo);
+                const yBase = marginTop + plotH;
+                ticksSVG += `<line x1="${x}" y1="${yBase}" x2="${x}" y2="${yBase + 6}" stroke="#333" stroke-width="1"/>`;
+                ticksSVG += `<text x="${x}" y="${yBase + 20}" text-anchor="middle" fill="#333" font-family="Consolas, monospace" font-size="12">${ppm}</text>`;
+            }
+
+            // Legend
+            const lx = svgW - marginRight - 180;
+            const legendSVG = `
+                <rect x="${lx}" y="6" width="175" height="38" rx="3" fill="rgba(255,255,255,0.85)" stroke="#ccc" stroke-width="0.5"/>
+                <line x1="${lx + 8}" y1="18" x2="${lx + 28}" y2="18" stroke="#d45000" stroke-width="2"/>
+                <text x="${lx + 33}" y="22" font-family="Segoe UI, sans-serif" font-size="11" fill="#333">Target</text>
+                <line x1="${lx + 88}" y1="18" x2="${lx + 108}" y2="18" stroke="#0064c8" stroke-width="2"/>
+                <text x="${lx + 113}" y="22" font-family="Segoe UI, sans-serif" font-size="11" fill="#333">Predicted</text>
+            `;
+
+            container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}">
+                <rect width="${svgW}" height="${svgH}" fill="#fff"/>
+                <text x="${marginLeft + 4}" y="20" font-family="Segoe UI, sans-serif" font-size="14" font-weight="bold" fill="#333">Target vs Predicted</text>
+                <path d="${tPaths.areaPath}" fill="rgba(212,80,0,0.12)"/>
+                <path d="${tPaths.linePath}" fill="none" stroke="#d45000" stroke-width="1.5"/>
+                <path d="${pPaths.areaPath}" fill="rgba(0,100,200,0.12)"/>
+                <path d="${pPaths.linePath}" fill="none" stroke="#0064c8" stroke-width="1.5"/>
+                <line x1="${marginLeft}" y1="${marginTop + plotH}" x2="${marginLeft + plotW}" y2="${marginTop + plotH}" stroke="#333" stroke-width="1"/>
+                ${ticksSVG}
+                ${legendSVG}
                 <text x="${svgW / 2}" y="${svgH - 8}" text-anchor="middle" fill="#333" font-family="Segoe UI, sans-serif" font-size="13">Chemical Shift (ppm)</text>
             </svg>`;
         }
@@ -671,8 +725,13 @@
                         trajEl.appendChild(div);
                         trajEl.scrollTop = trajEl.scrollHeight;
 
-                        // Update molecule drawing
-                        if (isBest) drawMolecule(step.smiles, 'id-mol-svg');
+                        // Update spectrum overlay and molecule drawing
+                        if (isBest) {
+                            drawMolecule(step.smiles, 'id-mol-svg');
+                            if (specEl && step.predictedShifts && step.predictedShifts.length > 0) {
+                                drawOverlaySpectrumSVG(specEl, peaks.map(p => ({ shift: p })), step.predictedShifts.map(s => ({ shift: typeof s === 'number' ? s : s.shift })));
+                            }
+                        }
                     },
                 });
 
@@ -690,7 +749,7 @@
 
                 drawMolecule(result.smiles, 'id-mol-svg');
                 if (specEl && result.predictedShifts.length > 0) {
-                    drawLorentzianSVG(specEl, result.predictedShifts.map(p => ({ shift: typeof p === 'number' ? p : p.shift })), { title: 'Predicted Spectrum' });
+                    drawOverlaySpectrumSVG(specEl, peaks.map(p => ({ shift: p })), result.predictedShifts.map(p => ({ shift: typeof p === 'number' ? p : p.shift })));
                 }
 
             } catch (err) {
