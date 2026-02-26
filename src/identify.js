@@ -5,6 +5,7 @@ import {
   enumerateFragmentAttachments, enumerateSubstitutions, enumerateBondChanges,
   enumerateRemovals, enumerateRingClosures,
   getAtomCount, getMolecularWeight, containsOnlyAtoms, countCarbons,
+  getMolecularFormula, formulaBudget, fragmentFitsBudget,
 } from './mutate.js';
 import { estimateFromSpectra, resolveHoseSmiles } from './estimate.js';
 
@@ -123,6 +124,223 @@ async function globalCachedPredict(smiles) {
 
 // Static fragment list: avoids expensive reverse HOSE lookups in getGuidedFragments
 const ALL_FRAGMENTS = [...COMMON_FRAGMENTS, ...HETEROCYCLIC_FRAGMENTS];
+
+/**
+ * Batch-attach: for each missing peak, look up HOSE codes,
+ * filter by formula budget, extract fragments, attach all at once.
+ *
+ * @param {boolean} includeShifted - if true, also include poorly-matched peaks (for round 2+)
+ * Returns array of candidate SMILES (each with all fragments attached).
+ */
+async function batchAttachForMissingPeaks(currentSmiles, currentLoss, targetShifts, targetFormula, allowedAtomSet, includeShifted = false) {
+  const currentFormula = getMolecularFormula(currentSmiles);
+  const budget = formulaBudget(targetFormula, currentFormula);
+
+  // Check if any budget remains (any positive values)
+  const hasPositiveBudget = Object.values(budget).some(v => v > 0);
+  if (!hasPositiveBudget && !includeShifted) return [];
+
+  // Collect peaks to fix
+  const missingPeaks = [];
+
+  // Always include unmatched target peaks
+  for (const idx of currentLoss.unmatchedTarget) {
+    missingPeaks.push({ shift: targetShifts[idx], idx, type: 'unmatched' });
+  }
+
+  // In round 2+, also include shifted peaks (matched but high error)
+  if (includeShifted) {
+    const sortedAssignments = [...currentLoss.assignments].sort((a, b) => b.error - a.error);
+    for (const a of sortedAssignments.slice(0, 3)) {
+      if (a.error > 5.0) {
+        missingPeaks.push({ shift: targetShifts[a.targetIdx], idx: a.targetIdx, type: 'shifted' });
+      }
+    }
+  }
+
+  if (missingPeaks.length === 0) return [];
+
+  // Dedupe by rounded PPM
+  const seenPpm = new Set();
+  const uniqueMissing = missingPeaks.filter(p => {
+    const key = Math.round(p.shift);
+    if (seenPpm.has(key)) return false;
+    seenPpm.add(key);
+    return true;
+  });
+
+  // For each missing peak, reverse-lookup HOSE codes and extract candidate fragments
+  const fragmentsPerPeak = [];
+  for (const peak of uniqueMissing) {
+    try {
+      const hoseResults = await estimateFromSpectra({
+        peaks: [Math.round(peak.shift)],
+        tolerance: 5.0,
+        maxResults: 10,
+      });
+      const enriched = await resolveHoseSmiles(hoseResults);
+
+      const peakFragments = [];
+      for (const result of Object.values(enriched)) {
+        if (!result || !result.smiles) continue;
+        for (const frag of extractFragmentsFromSmiles(result.smiles)) {
+          const fragFormula = getMolecularFormula(frag);
+          if (!fragmentFitsBudget(fragFormula, budget)) continue;
+          if (allowedAtomSet && !containsOnlyAtoms(frag, allowedAtomSet)) continue;
+          peakFragments.push(frag);
+        }
+      }
+      // Always include simple atoms that fit the budget
+      for (const atom of ['C', 'N', 'O']) {
+        const af = getMolecularFormula(atom);
+        if (fragmentFitsBudget(af, budget)) {
+          if (!allowedAtomSet || allowedAtomSet.has(atom)) peakFragments.push(atom);
+        }
+      }
+      // Also try multi-atom chains that fit budget: CC, CCC, etc.
+      if ((budget['C'] || 0) >= 2) peakFragments.push('CC');
+      if ((budget['C'] || 0) >= 3) peakFragments.push('CCC');
+
+      fragmentsPerPeak.push({ peak, fragments: [...new Set(peakFragments)] });
+    } catch {
+      fragmentsPerPeak.push({ peak, fragments: ['C'] });
+    }
+  }
+
+  // Score each fragment per peak by attaching it alone, picking best per peak
+  // Track cumulative formula budget to avoid over-attaching
+  const remainingBudget = { ...budget };
+  const selectedFragments = []; // { frag, peakShift }
+
+  for (const { peak, fragments } of fragmentsPerPeak) {
+    if (fragments.length === 0) continue;
+
+    // Filter fragments that still fit remaining budget
+    const viable = fragments.filter(f => fragmentFitsBudget(getMolecularFormula(f), remainingBudget));
+    if (viable.length === 0) continue;
+
+    // Score: attach at end, predict, find closest shift to missing peak
+    let bestFrag = viable[0];
+    let bestScore = Infinity;
+    for (const frag of viable.slice(0, 5)) {
+      const testSmiles = fastValidateAttach(currentSmiles, frag);
+      if (!testSmiles) continue;
+      const pred = await globalCachedPredict(testSmiles);
+      if (!pred) continue;
+      const shifts = pred.map(p => p.shift);
+      let closest = Infinity;
+      for (const s of shifts) {
+        const d = Math.abs(s - peak.shift);
+        if (d < closest) closest = d;
+      }
+      if (closest < bestScore) {
+        bestScore = closest;
+        bestFrag = frag;
+      }
+    }
+
+    // Deduct from remaining budget
+    const fragF = getMolecularFormula(bestFrag);
+    for (const [atom, count] of Object.entries(fragF)) {
+      remainingBudget[atom] = (remainingBudget[atom] || 0) - count;
+    }
+    selectedFragments.push({ frag: bestFrag, peakShift: peak.shift });
+  }
+
+  if (selectedFragments.length === 0) return [];
+
+  const candidates = [];
+  const positions = findAtomPositionsForAttach(currentSmiles);
+
+  // Strategy 1: attach all fragments at the last atom position
+  let combined = currentSmiles;
+  for (const { frag } of selectedFragments) {
+    const attached = fastValidateAttach(combined, frag);
+    if (attached) combined = attached;
+  }
+  if (combined !== currentSmiles) {
+    try {
+      const norm = normalize(combined);
+      candidates.push({ smiles: norm, description: `batch-attach ${selectedFragments.length} frags` });
+    } catch { /* invalid combined */ }
+  }
+
+  // Strategy 2: attach each fragment at every atom position (generate many candidates)
+  for (let posIdx = 0; posIdx < Math.min(positions.length, 10); posIdx++) {
+    let combo = currentSmiles;
+    for (const { frag } of selectedFragments) {
+      const pos = positions[posIdx];
+      const testSmiles = combo.slice(0, pos.end) + `(${frag})` + combo.slice(pos.end);
+      const validated = fastValidate(testSmiles);
+      if (validated) combo = validated;
+    }
+    if (combo !== currentSmiles) {
+      try {
+        const norm = normalize(combo);
+        candidates.push({ smiles: norm, description: `batch-attach ${selectedFragments.length} frags @${posIdx}` });
+      } catch { /* invalid */ }
+    }
+  }
+
+  // Strategy 3: if only 1-2 fragments, try attaching each at every position independently
+  if (selectedFragments.length <= 2) {
+    for (const { frag } of selectedFragments) {
+      for (let posIdx = 0; posIdx < Math.min(positions.length, 15); posIdx++) {
+        const pos = positions[posIdx];
+        const testSmiles = currentSmiles.slice(0, pos.end) + `(${frag})` + currentSmiles.slice(pos.end);
+        const validated = fastValidate(testSmiles);
+        if (!validated) continue;
+        try {
+          const norm = normalize(validated);
+          candidates.push({ smiles: norm, description: `batch-attach (${frag}) @${posIdx}` });
+        } catch { /* invalid */ }
+      }
+    }
+  }
+
+  // Dedupe candidates
+  const seen = new Set();
+  return candidates.filter(c => {
+    if (seen.has(c.smiles)) return false;
+    seen.add(c.smiles);
+    return true;
+  });
+}
+
+/** Attach a fragment at the end of a SMILES string, return fastValidate'd result or null. */
+function fastValidateAttach(smiles, frag) {
+  // Try as branch at last atom
+  const atomRe = new RegExp(/\[[^\]]+\]|Br|Cl|[BCNOPSFIbcnosp]/.source, 'g');
+  let lastMatch = null;
+  let m;
+  while ((m = atomRe.exec(smiles)) !== null) lastMatch = m;
+  if (!lastMatch) return null;
+  const insertPos = lastMatch.index + lastMatch[0].length;
+  const result = smiles.slice(0, insertPos) + `(${frag})` + smiles.slice(insertPos);
+  return fastValidate(result);
+}
+
+/** Find atom positions for branch attachment. */
+function findAtomPositionsForAttach(smiles) {
+  const re = new RegExp(/\[[^\]]+\]|Br|Cl|[BCNOPSFIbcnosp]/.source, 'g');
+  const positions = [];
+  let m;
+  while ((m = re.exec(smiles)) !== null) {
+    positions.push({ start: m.index, end: m.index + m[0].length, atom: m[0] });
+  }
+  return positions;
+}
+
+/** Fast validation: balanced parens + non-empty. */
+function fastValidate(smiles) {
+  if (!smiles || smiles.length === 0) return null;
+  let depth = 0;
+  for (let i = 0; i < smiles.length; i++) {
+    if (smiles[i] === '(') depth++;
+    else if (smiles[i] === ')') { depth--; if (depth < 0) return null; }
+  }
+  return depth === 0 ? smiles : null;
+}
 
 /**
  * Predict 13C shifts with atom index tracking.
@@ -284,6 +502,7 @@ export async function identifyMolecule(targetShifts, options = {}) {
     targetMW = 0,
     mwTolerance = 0.3,
     allowedAtoms = null,
+    targetFormula = null,
   } = options;
 
   const allowedAtomSet = allowedAtoms ? new Set(allowedAtoms) : null;
@@ -315,11 +534,75 @@ export async function identifyMolecule(targetShifts, options = {}) {
     };
   }
 
+  // ── Phase 1: Batch-attach (when targetFormula is provided) ────────────────
+  if (targetFormula && currentLoss.loss > convergenceThreshold) {
+    const maxBatchRounds = Math.min(maxSteps, 5); // cap batch rounds
+    for (let batchRound = 0; batchRound < maxBatchRounds; batchRound++) {
+      if (timeoutMs > 0 && (Date.now() - startTime) >= timeoutMs) break;
+      if (currentLoss.loss <= convergenceThreshold) break;
+
+      const includeShifted = batchRound > 0; // round 0: unmatched only; round 1+: also shifted peaks
+      const batchCandidates = await batchAttachForMissingPeaks(
+        currentSmiles, currentLoss, targetShifts, targetFormula, allowedAtomSet, includeShifted
+      );
+
+      if (batchCandidates.length === 0) break;
+
+      // Evaluate batch candidates
+      let bestBatch = null;
+      let bestBatchLoss = currentLoss.loss;
+      for (const cand of batchCandidates) {
+        const pred = await globalCachedPredict(cand.smiles);
+        if (!pred) continue;
+        const shifts = pred.map(p => p.shift);
+        const loss = computeLoss(shifts, targetShifts, lossOpts);
+        if (loss.loss < bestBatchLoss) {
+          bestBatchLoss = loss.loss;
+          bestBatch = { ...cand, prediction: pred, shifts, lossResult: loss };
+        }
+      }
+
+      if (!bestBatch) break; // no improvement from batch-attach
+
+      // Accept the batch-attach result
+      currentSmiles = bestBatch.smiles;
+      currentPrediction = bestBatch.prediction;
+      currentShifts = bestBatch.shifts;
+      currentLoss = bestBatch.lossResult;
+
+      const stepInfo = {
+        step: trajectory.length,
+        smiles: currentSmiles,
+        loss: currentLoss.loss,
+        mutation: bestBatch.description,
+        predictedShifts: [...currentShifts],
+      };
+      trajectory.push(stepInfo);
+      if (onStep) onStep(stepInfo);
+
+      if (currentLoss.loss <= convergenceThreshold) break;
+      // Continue loop — next round handles peaks that shifted due to combined environment
+    }
+
+    // If batch-attach solved it, return early
+    if (currentLoss.loss <= convergenceThreshold) {
+      return {
+        smiles: currentSmiles,
+        predictedShifts: currentPrediction,
+        loss: currentLoss.loss,
+        steps: trajectory.length - 1,
+        trajectory,
+      };
+    }
+  }
+
+  // ── Phase 2: Greedy gradient descent (fallback / refinement) ──────────────
   let plateauCount = 0;
   let backtracksUsed = 0;
   const visitedSmiles = new Set([currentSmiles]);
 
-  for (let step = 1; step <= maxSteps; step++) {
+  const remainingSteps = maxSteps - (trajectory.length - 1);
+  for (let step = 1; step <= remainingSteps; step++) {
     // Time budget check
     if (timeoutMs > 0 && (Date.now() - startTime) >= timeoutMs) break;
 
@@ -330,7 +613,15 @@ export async function identifyMolecule(targetShifts, options = {}) {
     const filterCandidates = (raw) => {
       let cands = raw.filter(c => !visitedSmiles.has(c.smiles));
       if (allowedAtomSet) cands = cands.filter(c => containsOnlyAtoms(c.smiles, allowedAtomSet));
-      if (targetMW > 0) {
+      if (targetFormula) {
+        cands = cands.filter(c => {
+          const cf = getMolecularFormula(c.smiles);
+          for (const [atom, count] of Object.entries(cf)) {
+            if (count > (targetFormula[atom] || 0)) return false;
+          }
+          return true;
+        });
+      } else if (targetMW > 0) {
         const maxMW = targetMW * (1 + mwTolerance);
         cands = cands.filter(c => { const mw = getMolecularWeight(c.smiles); return mw > 0 && mw <= maxMW; });
       }

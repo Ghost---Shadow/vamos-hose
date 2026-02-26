@@ -4,18 +4,44 @@
 
 Given a set of experimental 13C NMR chemical shifts (peak positions in PPM), find the molecular structure that best explains them. This is an inverse problem: NMR spectra → molecule.
 
-## Algorithm
+## Algorithm (v2 — Batch-Attach with Formula Filtering)
 
-Steepest-descent optimization on molecular graphs:
+Peak-driven batch attachment instead of single-atom gradient descent:
 
 ```
-1. Start with an initial molecule (e.g., "C")
+1. Start with an initial molecule (corrupted/partial structure)
 2. Predict its 13C NMR spectrum via HOSE code lookup
-3. Compute loss = sum of |predicted - target| for best-matched peaks + penalty for unmatched peaks
-4. Generate candidate mutations (atom substitutions, additions, bond changes, removals, fragment attachments)
-5. Evaluate each candidate's predicted spectrum
-6. Accept the candidate with lowest loss
-7. Repeat until converged or max steps reached
+3. Identify MISSING peaks (target peaks with no close predicted match)
+4. For each missing peak:
+   a. Reverse lookup: shift → HOSE codes (via inverted index)
+   b. Filter candidates by molecular formula budget (target formula - current formula)
+   c. Extract fragment SMILES from matching HOSE environments
+5. Attach ALL fragments in one go (one per missing peak)
+6. Predict spectrum of the combined molecule
+7. Identify SHIFTED peaks — peaks we thought were covered but moved due to
+   the combined molecular environment changing their chemical shifts
+8. Repeat from step 3 for shifted peaks until converged
+```
+
+**Key insight**: The old algorithm added one atom/fragment per step, requiring 20+ steps
+for a molecule missing 5 atoms. Batch-attach covers all gaps in a single step, then
+fixes secondary shifts caused by the new environment.
+
+**Molecular formula filtering**: Given the target formula (e.g. C33H30N4O2), we know
+the exact atom budget remaining. When looking up HOSE codes for a missing peak, we
+reject any fragment that would exceed the budget. This dramatically prunes the search
+space — instead of trying C, N, O, S, Cl fragments, we only try atoms that are
+actually missing from the current structure.
+
+### Fallback: Greedy Gradient Descent (v1)
+
+If batch-attach fails to converge (loss not decreasing), fall back to per-step mutations:
+
+```
+1. Generate candidate mutations (substitutions, additions, bond changes, removals, fragments)
+2. Evaluate each candidate's predicted spectrum
+3. Accept the candidate with lowest loss
+4. Repeat until converged or max steps reached
 ```
 
 Escape mechanisms for local minima:

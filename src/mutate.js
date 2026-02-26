@@ -130,6 +130,40 @@ export function getAtomCount(smiles) {
   return findAtomPositions(smiles).length;
 }
 
+const FORMULA_UPPER = { 'c': 'C', 'n': 'N', 'o': 'O', 's': 'S', 'p': 'P', 'b': 'B' };
+
+/** Compute molecular formula as { C: 33, N: 4, O: 2, ... } from SMILES (heavy atoms only). */
+export function getMolecularFormula(smiles) {
+  const atoms = findAtomPositions(smiles);
+  const formula = {};
+  for (const { atom } of atoms) {
+    const key = FORMULA_UPPER[atom] || atom;
+    formula[key] = (formula[key] || 0) + 1;
+  }
+  return formula;
+}
+
+/** Compute remaining atom budget: target formula minus current formula. Negative values mean excess. */
+export function formulaBudget(targetFormula, currentFormula) {
+  const budget = {};
+  for (const [atom, count] of Object.entries(targetFormula)) {
+    budget[atom] = count - (currentFormula[atom] || 0);
+  }
+  for (const [atom, count] of Object.entries(currentFormula)) {
+    if (!(atom in budget)) budget[atom] = -count;
+  }
+  return budget;
+}
+
+/** Check if a fragment's formula fits within the remaining budget (no atom exceeds budget). */
+export function fragmentFitsBudget(fragmentFormula, budget) {
+  for (const [atom, count] of Object.entries(fragmentFormula)) {
+    const remaining = budget[atom] || 0;
+    if (count > remaining) return false;
+  }
+  return true;
+}
+
 /**
  * Fast molecular weight estimate from SMILES string.
  * Sums heavy atom weights + estimates implicit hydrogens from valence rules.
