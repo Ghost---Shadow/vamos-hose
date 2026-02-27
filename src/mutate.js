@@ -112,7 +112,15 @@ export function containsOnlyAtoms(smiles, allowedSet) {
   const re = new RegExp(ATOM_RE.source, 'g');
   let m;
   while ((m = re.exec(smiles)) !== null) {
-    if (!allowedSet.has(m[0])) return false;
+    const raw = m[0];
+    if (allowedSet.has(raw)) continue;
+    // For bracket atoms like [nH], check if the element is allowed
+    if (raw.startsWith('[')) {
+      const el = atomToElement(raw);
+      const lower = el.toLowerCase();
+      if (allowedSet.has(el) || allowedSet.has(lower) || allowedSet.has(el[0].toUpperCase() + el.slice(1))) continue;
+    }
+    return false;
   }
   return true;
 }
@@ -132,12 +140,28 @@ export function getAtomCount(smiles) {
 
 const FORMULA_UPPER = { 'c': 'C', 'n': 'N', 'o': 'O', 's': 'S', 'p': 'P', 'b': 'B' };
 
+/** Extract element symbol from an atom token (handles bracket atoms like [nH], [NH2+], etc.) */
+export function atomToElement(atom) {
+  if (atom.startsWith('[')) {
+    const inner = atom.slice(1, -1); // remove [ and ]
+    // Element is: uppercase + optional lowercase (Cl, Br, Se) OR single lowercase aromatic (c, n, o)
+    // H after element is hydrogen count, NOT part of element name
+    const m = inner.match(/^([A-Z][a-z]?|[a-z])/);
+    if (m) {
+      const el = m[1];
+      return FORMULA_UPPER[el] || (el[0].toUpperCase() + el.slice(1));
+    }
+    return atom;
+  }
+  return FORMULA_UPPER[atom] || atom;
+}
+
 /** Compute molecular formula as { C: 33, N: 4, O: 2, ... } from SMILES (heavy atoms only). */
 export function getMolecularFormula(smiles) {
   const atoms = findAtomPositions(smiles);
   const formula = {};
   for (const { atom } of atoms) {
-    const key = FORMULA_UPPER[atom] || atom;
+    const key = atomToElement(atom);
     formula[key] = (formula[key] || 0) + 1;
   }
   return formula;
@@ -359,7 +383,39 @@ export function enumerateRingClosures(smiles) {
   });
 }
 
-/** Attach fragments as branches at each atom position. */
+/**
+ * Renumber ring closure digits in a fragment to avoid collision with main SMILES.
+ * Returns null if not enough free digits available.
+ */
+export function renumberRingDigits(fragment, mainSmiles) {
+  const usedInMain = new Set();
+  for (const ch of mainSmiles) {
+    if (ch >= '1' && ch <= '9') usedInMain.add(ch);
+  }
+  const fragDigits = [];
+  for (const ch of fragment) {
+    if (ch >= '1' && ch <= '9' && !fragDigits.includes(ch)) fragDigits.push(ch);
+  }
+  if (fragDigits.length === 0) return fragment;
+  if (fragDigits.every(d => !usedInMain.has(d))) return fragment;
+  const available = [];
+  for (let d = 1; d <= 9; d++) {
+    if (!usedInMain.has(String(d))) available.push(String(d));
+  }
+  if (available.length < fragDigits.length) return null;
+  const mapping = {};
+  let ai = 0;
+  for (const d of fragDigits) {
+    mapping[d] = available[ai++];
+  }
+  let result = '';
+  for (const ch of fragment) {
+    result += mapping[ch] || ch;
+  }
+  return result;
+}
+
+/** Attach fragments as branches at each atom position. Renumbers ring digits to avoid collision. */
 export function enumerateFragmentAttachments(smiles, fragments) {
   if (!fragments || fragments.length === 0) return [];
   return withNormDedup(smiles, canonical => {
@@ -367,12 +423,40 @@ export function enumerateFragmentAttachments(smiles, fragments) {
     const positions = findAtomPositions(canonical);
 
     for (const frag of fragments) {
+      const renumbered = renumberRingDigits(frag, canonical);
+      if (!renumbered) continue;
       for (const pos of positions) {
         const c = candidate(
-          canonical.slice(0, pos.end) + `(${frag})` + canonical.slice(pos.end),
+          canonical.slice(0, pos.end) + `(${renumbered})` + canonical.slice(pos.end),
           `attach (${frag})`, canonical
         );
         if (c) results.push(c);
+      }
+    }
+    return results;
+  });
+}
+
+/** Swap pairs of different atom types (C↔N, C↔O, etc.) — preserves molecular formula. */
+export function enumerateAtomSwaps(smiles) {
+  return withNormDedup(smiles, canonical => {
+    const results = [];
+    const positions = findAtomPositions(canonical);
+    const swapPairs = [['C', 'N'], ['C', 'O'], ['N', 'O'], ['c', 'n'], ['c', 'o'], ['n', 'o']];
+    for (const [a, b] of swapPairs) {
+      const posA = positions.filter(p => p.atom === a);
+      const posB = positions.filter(p => p.atom === b);
+      for (const pa of posA) {
+        for (const pb of posB) {
+          let s;
+          if (pa.start > pb.start) {
+            s = canonical.slice(0, pb.start) + a + canonical.slice(pb.end, pa.start) + b + canonical.slice(pa.end);
+          } else {
+            s = canonical.slice(0, pa.start) + b + canonical.slice(pa.end, pb.start) + a + canonical.slice(pb.end);
+          }
+          const c = candidate(s, `swap ${a}↔${b}`, canonical);
+          if (c) results.push(c);
+        }
       }
     }
     return results;
