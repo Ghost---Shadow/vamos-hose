@@ -318,13 +318,19 @@ async function batchAttachForMissingPeaks(currentSmiles, currentLoss, targetShif
     for (let posIdx = 0; posIdx < positions.length; posIdx++) {
       const pos = positions[posIdx];
       const atomEl = atomToElement(pos.atom);
-      // Don't remove an atom if its budget is already <= 0 (no headroom for that element)
-      if ((budget[atomEl] || 0) <= 0) continue;
-      // Check net formula change fits budget
+      // Check net formula change fits budget (directional: can't over-add or wrong-direction)
       let netFits = true;
+      const checkedEls = new Set();
       for (const [atom, count] of Object.entries(fragFormula)) {
+        checkedEls.add(atom);
         const net = atom === atomEl ? count - 1 : count;
-        if (net > (budget[atom] || 0)) { netFits = false; break; }
+        const b = budget[atom] || 0;
+        if (net < Math.min(0, b) || net > Math.max(0, b)) { netFits = false; break; }
+      }
+      // Check replaced element if not in fragment (net = -1 for that element)
+      if (netFits && !checkedEls.has(atomEl)) {
+        const b = budget[atomEl] || 0;
+        if (-1 < Math.min(0, b) || -1 > Math.max(0, b)) netFits = false;
       }
       if (!netFits) continue;
       const testSmiles = currentSmiles.slice(0, pos.start) + rn + currentSmiles.slice(pos.end);

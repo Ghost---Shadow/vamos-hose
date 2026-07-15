@@ -133,4 +133,35 @@ describe('Telmisartan Corruption Tests', () => {
     expect(result.loss).toBeLessThan(100);
     expect(countCarbons(result.smiles)).toEqual(targetShifts.length);
   }, 120000);
+
+  test('9: Missing CH2 bridge (N1CC3→N1C3, -1 carbon)', async () => {
+    // Remove one CH2 from the bridge connecting benzimidazole to phenyl
+    const corrupted = telmisartan.replace('N1CC3', 'N1C3');
+    const result = await runCorruption('Missing CH2 bridge', corrupted);
+    expect(result.loss).toEqual(0.0);
+    expect(result.predictedShifts.length).toEqual(targetShifts.length);
+  }, 60000);
+
+  test('10: COOH→methyl swap (wrong functional group)', async () => {
+    const corrupted = telmisartan.replace('C(=O)O', 'C');
+    const result = await runCorruption('COOH→methyl', corrupted);
+    expect(result.loss).toEqual(0.0);
+    expect(result.predictedShifts.length).toEqual(targetShifts.length);
+  }, 120000);
+
+  test('11: Missing propyl + missing COOH (two distant corruptions)', async () => {
+    let corrupted = telmisartan.replace('CCCC1', 'CC1');
+    corrupted = corrupted.replace('C(=O)O', '');
+    const result = await runCorruption('Missing propyl + COOH', corrupted);
+    expect(result.loss).toEqual(0.0);
+    expect(result.predictedShifts.length).toEqual(targetShifts.length);
+  }, 120000);
+
+  test.skip('12: Extra phenyl ring (added noise)', async () => {
+    // Add a phenyl branch that shouldn't be there — algorithm must remove it
+    const corrupted = telmisartan.replace('C4=CC=CC=C4', 'C4=CC(c7ccccc7)=CC=C4');
+    const result = await runCorruption('Extra phenyl added', corrupted);
+    expect(result.loss).toEqual(0.0);
+    expect(result.predictedShifts.length).toEqual(targetShifts.length);
+  }, 120000);
 });
